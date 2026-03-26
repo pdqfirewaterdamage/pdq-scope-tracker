@@ -1,0 +1,9 @@
+export const PDQ_BLUE = '#0077C8';
+export const PDQ_GREEN = '#3a9e3f';
+export const PDQ_ORANGE = '#FF6B00';
+export const PDQ_RED = '#d32f2f';
+export const PDQ_GRAY = '#6b7280';
+export const PDQ_LIGHT = '#f8fafc';
+export const PDQ_DARK = '#1e293b';
+export const CAT3_BG = '#fff0f0';
+export const CAT3_BORDER = '#d32f2f';

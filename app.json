@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "PDQ Scope Tracker",
+    "slug": "pdq-scope-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "pdqscope",
+    "userInterfaceStyle": "light",
+    "splash": { "resizeMode": "contain", "backgroundColor": "#0077C8" },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pdqrestoration.scopetracker",
+      "infoPlist": {
+        "NSCameraUsageDescription": "PDQ Scope Tracker uses the camera to capture job site photos.",
+        "NSPhotoLibraryUsageDescription": "PDQ Scope Tracker saves photos to your library.",
+        "NSFaceIDUsageDescription": "Use Face ID to log in securely."
+      }
+    },
+    "android": {
+      "adaptiveIcon": { "backgroundColor": "#0077C8" },
+      "package": "com.pdqrestoration.scopetracker",
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"]
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-camera", { "cameraPermission": "Allow PDQ Scope Tracker to access your camera." }]
+    ]
+  }
+}
