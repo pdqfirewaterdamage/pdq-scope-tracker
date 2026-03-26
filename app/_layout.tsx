@@ -12,23 +12,12 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (loading) return;
-
     const inAuthGroup = segments[0] === '(auth)';
-
-    if (!user && !inAuthGroup) {
-      router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
+    // Auth temporarily disabled — always go to app
+    if (inAuthGroup) {
       router.replace('/(app)');
     }
-  }, [user, loading, segments]);
-
-  if (loading) {
-    return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={PDQ_BLUE} />
-      </View>
-    );
-  }
+  }, [loading, segments]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
