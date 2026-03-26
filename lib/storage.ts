@@ -97,12 +97,9 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function createProject(data: CreateProjectData): Promise<Project> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-
   const { data: project, error } = await supabase
     .from('projects')
-    .insert({ ...data, created_by: user.id })
+    .insert({ ...data })
     .select()
     .single();
 
