@@ -46,7 +46,7 @@ const APP_TILES: AppTile[] = [
   },
   {
     key: 'psycorp',
-    label: 'Psycorp',
+    label: 'PDQ RestoreCalc',
     icon: '\uD83E\uDDEE',
     color: PDQ_GREEN_LIGHT,
     route: '/(app)/psycorp',

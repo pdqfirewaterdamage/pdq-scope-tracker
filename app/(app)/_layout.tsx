@@ -39,7 +39,7 @@ export default function AppLayout() {
       />
       <Stack.Screen
         name="psycorp"
-        options={{ title: 'Psycorp Calculator' }}
+        options={{ title: 'PDQ RestoreCalc' }}
       />
       <Stack.Screen
         name="project/[id]"
