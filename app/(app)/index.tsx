@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAppContext } from '../../context/AppContext';
 import {
@@ -90,7 +91,7 @@ export default function HubScreen() {
   const { signOut, profile } = useAppContext();
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -143,7 +144,7 @@ export default function HubScreen() {
           <Text style={styles.footerSub}>973-316-6014 | pdqfirewaterdamage.com</Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
