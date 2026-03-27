@@ -196,19 +196,29 @@ export function RoomSection({
           />
         )}
 
-        {/* Hours type for done items */}
+        {/* Hours selector for done items */}
         {item.status === 'done' && !item.no_hours && (
           <View style={styles.hoursRow}>
-            {(['regular', 'after'] as const).map((ht) => (
+            <Text style={styles.hoursLabel}>Hrs:</Text>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((h) => (
               <TouchableOpacity
-                key={ht}
-                style={[styles.hoursChip, item.hours_type === ht && styles.hoursChipActive]}
-                onPress={() => handleHoursType(item, ht)}
+                key={h}
+                style={[
+                  styles.hourBtn,
+                  item.hours === h && styles.hourBtnActive,
+                ]}
+                onPress={() => {
+                  onUpdateItem(item.id, { hours: h }).catch(() => {});
+                }}
+                activeOpacity={0.7}
               >
                 <Text
-                  style={[styles.hoursChipText, item.hours_type === ht && styles.hoursChipTextActive]}
+                  style={[
+                    styles.hourBtnText,
+                    item.hours === h && styles.hourBtnTextActive,
+                  ]}
                 >
-                  {ht === 'regular' ? 'Reg' : 'After'}
+                  {h}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -535,27 +545,36 @@ const styles = StyleSheet.create({
   },
   hoursRow: {
     flexDirection: 'row',
-    gap: 4,
-    marginTop: 4,
+    gap: 3,
+    marginTop: 6,
+    alignItems: 'center',
   },
-  hoursChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
+  hoursLabel: {
+    fontSize: 11,
+    color: TEXT_DIM,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  hourBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: BORDER_COLOR,
     backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  hoursChipActive: {
+  hourBtnActive: {
     backgroundColor: PDQ_ORANGE,
     borderColor: PDQ_ORANGE,
   },
-  hoursChipText: {
-    fontSize: 11,
+  hourBtnText: {
+    fontSize: 12,
     color: TEXT_MUTED,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  hoursChipTextActive: {
+  hourBtnTextActive: {
     color: '#fff',
   },
 });
