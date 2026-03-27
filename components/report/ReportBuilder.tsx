@@ -122,6 +122,7 @@ export function ReportBuilder({ project, sheet, rooms }: ReportBuilderProps) {
       {/* Rooms */}
       {rooms.map((room) => {
         const roomDone = room.items.filter((i) => i.status === 'done').length;
+        const roomHours = room.items.reduce((sum, i) => sum + (i.status === 'done' && i.hours ? i.hours : 0), 0);
         const grouped: Record<string, Item[]> = {};
         for (const item of room.items) {
           const key = item.subsection;
@@ -134,7 +135,7 @@ export function ReportBuilder({ project, sheet, rooms }: ReportBuilderProps) {
             <View style={styles.roomHeader}>
               <Text style={styles.roomName}>{'\uD83C\uDFE0'} {room.name}</Text>
               <Text style={styles.roomCount}>
-                {'\u2713'} {roomDone}/{room.items.length}
+                {'\u2713'} {roomDone}/{room.items.length} {roomHours > 0 ? `\u00B7 ${roomHours}h` : ''}
               </Text>
             </View>
 
@@ -157,9 +158,9 @@ export function ReportBuilder({ project, sheet, rooms }: ReportBuilderProps) {
                       >
                         {item.label}
                       </Text>
-                      {item.status === 'done' && !item.no_hours && (
+                      {item.status === 'done' && item.hours != null && item.hours > 0 && (
                         <Text style={styles.hoursTag}>
-                          {item.hours_type === 'after' ? 'After Hours' : 'Regular'}
+                          {item.hours}h
                         </Text>
                       )}
                       {item.note ? (

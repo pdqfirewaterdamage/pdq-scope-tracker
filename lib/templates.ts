@@ -68,10 +68,10 @@ export function buildReportHTML(project: any, sheet: any, rooms: any[]): string 
             .map((item: any) => {
               const icon = getStatusIcon(item.status);
               const color = getStatusColor(item.status);
-              const hoursCell = item.no_hours
-                ? '&mdash;'
-                : item.hours
+              const hoursCell = item.hours
                 ? `${item.hours}h`
+                : item.no_hours
+                ? '&mdash;'
                 : '';
               const noteCell = item.note
                 ? `<em style="color:#6b7280;">${item.note}</em>`
