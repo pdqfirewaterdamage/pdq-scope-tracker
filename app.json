@@ -15,7 +15,7 @@
       "favicon": "./public/apple-touch-icon.png",
       "name": "PDQ Restoration",
       "shortName": "PDQ",
-      "themeColor": "#f97316",
+      "themeColor": "#1a3a5c",
       "backgroundColor": "#0f172a"
     },
     "ios": {

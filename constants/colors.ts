@@ -1,8 +1,9 @@
-// Dark theme matching PDQ reference design
-export const PDQ_ORANGE = '#f97316';
-export const PDQ_ORANGE_DARK = '#ea580c';
-export const PDQ_BLUE = '#60a5fa';
-export const PDQ_GREEN = '#22c55e';
+// PDQ brand colors from logo
+export const PDQ_NAVY = '#1a3a5c';
+export const PDQ_GREEN = '#2E7D32';
+export const PDQ_GREEN_LIGHT = '#4CAF50';
+export const PDQ_BLUE = '#2196F3';
+export const PDQ_ORANGE = '#FF6B00';
 export const PDQ_RED = '#ef4444';
 export const PDQ_PURPLE = '#a855f7';
 export const PDQ_AMBER = '#f59e0b';
@@ -14,7 +15,7 @@ export const PDQ_GRAY_DARK = '#475569';
 export const BG_APP = '#0f172a';
 export const BG_CARD = '#1e293b';
 export const BG_INPUT = '#0f172a';
-export const BG_HEADER = '#1e293b';
+export const BG_HEADER = '#1a3a5c';
 export const BORDER_COLOR = '#334155';
 
 // Text

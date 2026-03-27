@@ -20,7 +20,8 @@ import {
   TEXT_SECONDARY,
   TEXT_MUTED,
   TEXT_DIM,
-  PDQ_ORANGE,
+  PDQ_GREEN,
+  PDQ_NAVY,
   PDQ_RED,
 } from '../../constants/colors';
 
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logoCircle: {
-    backgroundColor: PDQ_ORANGE,
+    backgroundColor: PDQ_NAVY,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -204,7 +205,7 @@ const styles = StyleSheet.create({
     backgroundColor: BG_INPUT,
   },
   button: {
-    backgroundColor: PDQ_ORANGE,
+    backgroundColor: PDQ_GREEN,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',

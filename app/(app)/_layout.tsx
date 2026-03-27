@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { BG_HEADER, BG_APP, PDQ_ORANGE, BORDER_COLOR, TEXT_PRIMARY } from '../../constants/colors';
+import { BG_HEADER, BG_APP, PDQ_GREEN, BORDER_COLOR, TEXT_PRIMARY } from '../../constants/colors';
 
 export default function AppLayout() {
   return (
