@@ -16,12 +16,15 @@ export default function AppLayout() {
     >
       <Stack.Screen
         name="index"
-        options={{
-          title: 'PDQ Scope Tracker',
-          headerStyle: {
-            backgroundColor: BG_HEADER,
-          },
-        }}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="scope/index"
+        options={{ title: 'Scope Tracker' }}
+      />
+      <Stack.Screen
+        name="psycorp"
+        options={{ title: 'Psycorp Calculator' }}
       />
       <Stack.Screen
         name="project/[id]"
