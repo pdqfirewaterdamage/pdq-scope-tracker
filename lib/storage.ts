@@ -1,27 +1,5 @@
-// ─── Local Storage Backend (prototype mode — no Supabase needed) ─────────────
-
-function uuid(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-  });
-}
-
-function now(): string {
-  return new Date().toISOString();
-}
-
-function load<T>(key: string): T[] {
-  try {
-    return JSON.parse(localStorage.getItem(key) ?? '[]') as T[];
-  } catch {
-    return [];
-  }
-}
-
-function save<T>(key: string, data: T[]): void {
-  localStorage.setItem(key, JSON.stringify(data));
-}
+// ─── Supabase Storage Backend ─────────────────────────────────────────────────
+import { supabase } from './supabase';
 
 // ─── Database Types ───────────────────────────────────────────────────────────
 
@@ -110,73 +88,83 @@ export type CreateItemData = Omit<Item, 'id' | 'created_at'>;
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
 export async function getProjects(): Promise<Project[]> {
-  return load<Project>('pdq_projects').sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Project[];
 }
 
 export async function createProject(data: CreateProjectData): Promise<Project> {
-  const projects = load<Project>('pdq_projects');
-  const project: Project = {
-    ...data,
-    id: uuid(),
-    created_by: 'local',
-    created_at: now(),
-    updated_at: now(),
-  };
-  save('pdq_projects', [project, ...projects]);
-  return project;
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: project, error } = await supabase
+    .from('projects')
+    .insert({ ...data, created_by: user?.id ?? null })
+    .select()
+    .single();
+  if (error) throw error;
+  return project as Project;
 }
 
 export async function getProject(id: string): Promise<Project> {
-  const project = load<Project>('pdq_projects').find((p) => p.id === id);
-  if (!project) throw new Error('Project not found');
-  return project;
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data as Project;
 }
 
 export async function updateProject(id: string, data: Partial<Project>): Promise<Project> {
-  const projects = load<Project>('pdq_projects');
-  const idx = projects.findIndex((p) => p.id === id);
-  if (idx === -1) throw new Error('Project not found');
-  projects[idx] = { ...projects[idx], ...data, updated_at: now() };
-  save('pdq_projects', projects);
-  return projects[idx];
+  const { data: project, error } = await supabase
+    .from('projects')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return project as Project;
 }
 
 // ─── Sheets ───────────────────────────────────────────────────────────────────
 
 export async function getSheets(projectId: string): Promise<Sheet[]> {
-  return load<Sheet>('pdq_sheets')
-    .filter((s) => s.project_id === projectId)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const { data, error } = await supabase
+    .from('sheets')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data as Sheet[];
 }
 
 export async function createSheet(data: CreateSheetData): Promise<Sheet> {
-  const sheets = load<Sheet>('pdq_sheets');
-  const sheet: Sheet = {
-    ...data,
-    id: uuid(),
-    submitted: false,
-    submitted_at: null,
-    created_at: now(),
-  };
-  save('pdq_sheets', [sheet, ...sheets]);
-  return sheet;
+  const { data: sheet, error } = await supabase
+    .from('sheets')
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return sheet as Sheet;
 }
 
 export async function updateSheet(id: string, data: Partial<Sheet>): Promise<Sheet> {
-  const sheets = load<Sheet>('pdq_sheets');
-  const idx = sheets.findIndex((s) => s.id === id);
-  if (idx === -1) throw new Error('Sheet not found');
-  sheets[idx] = { ...sheets[idx], ...data };
-  save('pdq_sheets', sheets);
-  return sheets[idx];
+  const { data: sheet, error } = await supabase
+    .from('sheets')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return sheet as Sheet;
 }
 
 export async function submitSheet(id: string, techName: string): Promise<Sheet> {
   return updateSheet(id, {
     submitted: true,
-    submitted_at: now(),
+    submitted_at: new Date().toISOString(),
     tech_name: techName,
   });
 }
@@ -184,78 +172,129 @@ export async function submitSheet(id: string, techName: string): Promise<Sheet> 
 // ─── Rooms ────────────────────────────────────────────────────────────────────
 
 export async function getRooms(sheetId: string): Promise<Room[]> {
-  return load<Room>('pdq_rooms')
-    .filter((r) => r.sheet_id === sheetId)
-    .sort((a, b) => a.sort_order - b.sort_order);
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('*')
+    .eq('sheet_id', sheetId)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return data as Room[];
 }
 
 export async function createRoom(data: CreateRoomData): Promise<Room> {
-  const rooms = load<Room>('pdq_rooms');
-  const room: Room = { ...data, id: uuid(), created_at: now() };
-  save('pdq_rooms', [...rooms, room]);
-  return room;
+  const { data: room, error } = await supabase
+    .from('rooms')
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return room as Room;
 }
 
 export async function updateRoom(id: string, data: Partial<Room>): Promise<Room> {
-  const rooms = load<Room>('pdq_rooms');
-  const idx = rooms.findIndex((r) => r.id === id);
-  if (idx === -1) throw new Error('Room not found');
-  rooms[idx] = { ...rooms[idx], ...data };
-  save('pdq_rooms', rooms);
-  return rooms[idx];
+  const { data: room, error } = await supabase
+    .from('rooms')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return room as Room;
 }
 
 export async function deleteRoom(id: string): Promise<void> {
-  save('pdq_rooms', load<Room>('pdq_rooms').filter((r) => r.id !== id));
-  save('pdq_items', load<Item>('pdq_items').filter((i) => i.room_id !== id));
+  // Items are cascade-deleted by the foreign key constraint
+  const { error } = await supabase
+    .from('rooms')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
 }
 
 // ─── Items ────────────────────────────────────────────────────────────────────
 
 export async function getItems(roomId: string): Promise<Item[]> {
-  return load<Item>('pdq_items')
-    .filter((i) => i.room_id === roomId)
-    .sort((a, b) => a.sort_order - b.sort_order);
+  const { data, error } = await supabase
+    .from('items')
+    .select('*')
+    .eq('room_id', roomId)
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return data as Item[];
 }
 
 export async function createItems(items: CreateItemData[]): Promise<Item[]> {
-  const existing = load<Item>('pdq_items');
-  const created = items.map((i) => ({ ...i, id: uuid(), created_at: now() }));
-  save('pdq_items', [...existing, ...created]);
-  return created;
+  const { data, error } = await supabase
+    .from('items')
+    .insert(items)
+    .select();
+  if (error) throw error;
+  return data as Item[];
 }
 
 export async function updateItem(id: string, data: Partial<Item>): Promise<Item> {
-  const items = load<Item>('pdq_items');
-  const idx = items.findIndex((i) => i.id === id);
-  if (idx === -1) throw new Error('Item not found');
-  items[idx] = { ...items[idx], ...data };
-  save('pdq_items', items);
-  return items[idx];
+  const { data: item, error } = await supabase
+    .from('items')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return item as Item;
 }
 
-// ─── Realtime (no-op in local mode) ──────────────────────────────────────────
+// ─── Realtime ─────────────────────────────────────────────────────────────────
 
 export function subscribeToSheet(
-  _sheetId: string,
-  _callback: (payload: unknown) => void
+  sheetId: string,
+  callback: (payload: unknown) => void
 ): { unsubscribe: () => void } {
-  return { unsubscribe: () => {} };
+  const channel = supabase
+    .channel(`sheet-${sheetId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'items', filter: `room_id=in.(select id from rooms where sheet_id='${sheetId}')` },
+      callback
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'rooms', filter: `sheet_id=eq.${sheetId}` },
+      callback
+    )
+    .subscribe();
+
+  return {
+    unsubscribe: () => {
+      supabase.removeChannel(channel);
+    },
+  };
 }
 
 // ─── Photos ───────────────────────────────────────────────────────────────────
 
 export async function getPhotos(itemId: string): Promise<Photo[]> {
-  return load<Photo>('pdq_photos').filter((p) => p.item_id === itemId);
+  const { data, error } = await supabase
+    .from('photos')
+    .select('*')
+    .eq('item_id', itemId);
+  if (error) throw error;
+  return data as Photo[];
 }
 
 export async function createPhoto(data: Omit<Photo, 'id' | 'created_at'>): Promise<Photo> {
-  const photos = load<Photo>('pdq_photos');
-  const photo: Photo = { ...data, id: uuid(), created_at: now() };
-  save('pdq_photos', [...photos, photo]);
-  return photo;
+  const { data: photo, error } = await supabase
+    .from('photos')
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return photo as Photo;
 }
 
 export async function deletePhotoRecord(id: string): Promise<void> {
-  save('pdq_photos', load<Photo>('pdq_photos').filter((p) => p.id !== id));
+  const { error } = await supabase
+    .from('photos')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
 }
