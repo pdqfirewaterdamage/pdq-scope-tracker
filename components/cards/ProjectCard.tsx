@@ -8,10 +8,12 @@ import {
 import { Project } from '../../lib/storage';
 import { Badge } from '../ui/Badge';
 import {
-  PDQ_BLUE,
-  PDQ_DARK,
-  PDQ_GRAY,
-  PDQ_LIGHT,
+  BG_CARD,
+  BORDER_COLOR,
+  TEXT_PRIMARY,
+  TEXT_MUTED,
+  TEXT_DIM,
+  PDQ_ORANGE,
 } from '../../constants/colors';
 
 interface ProjectCardProps {
@@ -22,6 +24,7 @@ interface ProjectCardProps {
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', {
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -30,36 +33,35 @@ function formatDate(iso: string): string {
 
 export function ProjectCard({ project, onPress }: ProjectCardProps) {
   const isCat3 = project.water_category === 'cat3';
+  const isComplete = project.status === 'complete';
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, isComplete && styles.cardComplete]}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      {/* Top row */}
       <View style={styles.topRow}>
         <View style={styles.titleCol}>
-          <Text style={styles.jobName} numberOfLines={1}>
-            {project.job_name}
-          </Text>
-          <Text style={styles.address} numberOfLines={1}>
-            {project.address}
-          </Text>
-        </View>
-        <View style={styles.badges}>
-          <Badge variant={project.status === 'complete' ? 'complete' : 'active'} />
-          {project.water_category && (
-            <Badge variant={isCat3 ? 'cat3' : 'cat2'} />
-          )}
+          <Text style={styles.jobName}>{project.job_name}</Text>
+          {project.address ? (
+            <Text style={styles.address}>{project.address}</Text>
+          ) : null}
         </View>
       </View>
 
-      {/* Bottom row */}
       <View style={styles.bottomRow}>
-        <Text style={styles.meta}>{project.job_type}</Text>
+        <View style={styles.badges}>
+          <Badge variant={isComplete ? 'complete' : 'active'} />
+          {project.water_category && (
+            <Badge variant={isCat3 ? 'cat3' : 'cat2'} />
+          )}
+          <View style={styles.typeBadge}>
+            <Text style={styles.typeBadgeText}>{project.job_type}</Text>
+          </View>
+        </View>
         <Text style={styles.meta}>
-          Updated {formatDate(project.updated_at)}
+          Created {formatDate(project.created_at)}
         </Text>
       </View>
     </TouchableOpacity>
@@ -68,48 +70,60 @@ export function ProjectCard({ project, onPress }: ProjectCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    backgroundColor: BG_CARD,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+  },
+  cardComplete: {
+    opacity: 0.7,
   },
   topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   titleCol: {
     flex: 1,
-    marginRight: 12,
   },
   jobName: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
-    color: PDQ_DARK,
+    color: TEXT_PRIMARY,
   },
   address: {
     fontSize: 13,
-    color: PDQ_GRAY,
+    color: TEXT_MUTED,
     marginTop: 2,
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: 6,
-    alignItems: 'center',
   },
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  badges: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  typeBadge: {
+    backgroundColor: '#f973161a',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  typeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: PDQ_ORANGE,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   meta: {
     fontSize: 12,
-    color: PDQ_GRAY,
+    color: TEXT_DIM,
   },
 });

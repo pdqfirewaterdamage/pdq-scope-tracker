@@ -20,14 +20,18 @@ import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
 import { makeRoomItems, countPendingItems, ROOM_PRESETS, RoomItem } from '../../../../constants/templates';
 import {
-  PDQ_BLUE,
-  PDQ_DARK,
-  PDQ_GRAY,
-  PDQ_LIGHT,
+  BG_APP,
+  BG_CARD,
+  BG_INPUT,
+  BORDER_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_MUTED,
+  TEXT_DIM,
+  PDQ_ORANGE,
   PDQ_RED,
   PDQ_GREEN,
-  CAT3_BG,
-  CAT3_BORDER,
+  PDQ_GRAY,
 } from '../../../../constants/colors';
 import { Item, Room } from '../../../../lib/storage';
 
@@ -47,6 +51,14 @@ export default function TechSheetScreen() {
   const [roomPickerVisible, setRoomPickerVisible] = useState(false);
   const [customRoomName, setCustomRoomName] = useState('');
   const [addingRoom, setAddingRoom] = useState(false);
+
+  // Stats
+  const allItems = rooms.flatMap((r) => r.items as Item[]);
+  const doneCount = allItems.filter((i) => i.status === 'done').length;
+  const naCount = allItems.filter((i) => i.status === 'not_needed').length;
+  const pendingCount = allItems.filter((i) => i.status === 'pending').length;
+  const totalCount = allItems.length;
+  const progressPct = totalCount > 0 ? ((doneCount + naCount) / totalCount) * 100 : 0;
 
   useEffect(() => {
     if (sheet?.project_id) {
@@ -116,8 +128,7 @@ export default function TechSheetScreen() {
     }
     setTechNameError(false);
 
-    // Gate check
-    const allItems: RoomItem[] = rooms.flatMap((r) =>
+    const allRoomItems: RoomItem[] = rooms.flatMap((r) =>
       (r.items as Item[]).map((i) => ({
         id: i.scope_item_id,
         label: i.label,
@@ -137,7 +148,7 @@ export default function TechSheetScreen() {
       }))
     );
 
-    const { pending, doneWithoutHours } = countPendingItems(allItems);
+    const { pending, doneWithoutHours } = countPendingItems(allRoomItems);
 
     if (pending > 0) {
       Alert.alert(
@@ -173,7 +184,7 @@ export default function TechSheetScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={PDQ_BLUE} />
+        <ActivityIndicator size="large" color={PDQ_ORANGE} />
       </View>
     );
   }
@@ -190,7 +201,7 @@ export default function TechSheetScreen() {
   if (sheet.submitted) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.submittedIcon}>&#10003;</Text>
+        <Text style={styles.submittedIcon}>{'\u2713'}</Text>
         <Text style={styles.submittedText}>Sheet Submitted</Text>
         <Text style={styles.submittedSub}>
           This sheet was submitted on{' '}
@@ -198,7 +209,7 @@ export default function TechSheetScreen() {
             ? new Date(sheet.submitted_at).toLocaleDateString()
             : 'N/A'}
         </Text>
-        <Button label="Go Back" variant="secondary" size="md" onPress={() => router.back()} />
+        <Button label="Go Back" variant="outline" size="md" onPress={() => router.back()} />
       </View>
     );
   }
@@ -209,15 +220,35 @@ export default function TechSheetScreen() {
       {isCat3 && (
         <View style={styles.cat3Banner}>
           <Text style={styles.cat3BannerText}>
-            &#9888; CATEGORY 3 — Hydroxyl Generator REQUIRED. Extra PPE mandatory.
+            {'\u26A0'} CATEGORY 3 — Hydroxyl Generator REQUIRED. Extra PPE mandatory.
           </Text>
         </View>
       )}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        {/* Tech Info */}
+        {/* Project banner */}
+        {project && (
+          <View style={styles.banner}>
+            <Text style={styles.bannerTitle}>{project.job_name}</Text>
+            {project.address ? (
+              <Text style={styles.bannerAddress}>{project.address}</Text>
+            ) : null}
+          </View>
+        )}
+
+        {/* Stats Card */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Technician</Text>
+          <View style={styles.statsHeader}>
+            <Text style={styles.statsTitle}>
+              {sheet.date === new Date().toISOString().slice(0, 10) ? 'Today' : sheet.date}
+            </Text>
+            {sheet.submitted && (
+              <View style={styles.submittedBadge}>
+                <Text style={styles.submittedBadgeText}>Submitted</Text>
+              </View>
+            )}
+          </View>
+
           <TextInput
             style={[styles.input, techNameError && styles.inputError]}
             value={techName}
@@ -225,11 +256,32 @@ export default function TechSheetScreen() {
               setTechName(t);
               if (t.trim()) setTechNameError(false);
             }}
-            placeholder="Enter technician name *"
-            placeholderTextColor={PDQ_GRAY}
+            placeholder="Tech name"
+            placeholderTextColor={TEXT_DIM}
           />
 
-          <Text style={styles.sectionLabel}>Hours Type</Text>
+          <View style={styles.statsRow}>
+            <Text style={{ color: PDQ_GREEN, fontWeight: '600', fontSize: 13 }}>
+              {'\u2713'} {doneCount}
+            </Text>
+            <Text style={{ color: '#f59e0b', fontWeight: '600', fontSize: 13 }}>
+              — {naCount} N/A
+            </Text>
+            <Text style={{ color: TEXT_MUTED, fontWeight: '600', fontSize: 13 }}>
+              {'\u25CB'} {pendingCount} left
+            </Text>
+            <Text style={{ color: TEXT_DIM, fontSize: 13 }}>
+              {rooms.length} room{rooms.length !== 1 ? 's' : ''}
+            </Text>
+          </View>
+
+          {totalCount > 0 && (
+            <View style={styles.progressBar}>
+              <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+            </View>
+          )}
+
+          {/* Hours Type */}
           <View style={styles.chipRow}>
             {(['regular', 'after'] as const).map((ht) => (
               <TouchableOpacity
@@ -246,27 +298,6 @@ export default function TechSheetScreen() {
             ))}
           </View>
         </View>
-
-        {/* Contents Section */}
-        <ContentsSection
-          contentsData={{
-            status: sheet.contents_status,
-            boxes: sheet.contents_boxes,
-            hours: sheet.contents_hours,
-          }}
-          waterCategory={isCat3 ? 'cat3' : 'cat2'}
-          onUpdate={async (data) => {
-            try {
-              await updateSheet(sheet.id, {
-                contents_status: data.status,
-                contents_boxes: data.boxes,
-                contents_hours: data.hours,
-              });
-            } catch (e) {
-              console.error(e);
-            }
-          }}
-        />
 
         {/* Rooms */}
         {rooms.map((room) => (
@@ -307,19 +338,43 @@ export default function TechSheetScreen() {
           onPress={() => setRoomPickerVisible(true)}
           activeOpacity={0.8}
         >
-          <Text style={styles.addRoomText}>+ Add Room</Text>
+          <Text style={styles.addRoomText}>{'\uD83C\uDFE0'} + Add Room</Text>
         </TouchableOpacity>
 
+        {/* Contents Section */}
+        <ContentsSection
+          contentsData={{
+            status: sheet.contents_status,
+            boxes: sheet.contents_boxes,
+            hours: sheet.contents_hours,
+          }}
+          waterCategory={isCat3 ? 'cat3' : 'cat2'}
+          onUpdate={async (data) => {
+            try {
+              await updateSheet(sheet.id, {
+                contents_status: data.status,
+                contents_boxes: data.boxes,
+                contents_hours: data.hours,
+              });
+            } catch (e) {
+              console.error(e);
+            }
+          }}
+        />
+
         {/* Submit */}
-        <View style={styles.submitRow}>
-          <Button
-            label="Submit Sheet"
-            variant="primary"
-            size="lg"
-            loading={submitting}
-            onPress={handleSubmit}
-          />
-        </View>
+        <TouchableOpacity
+          style={styles.submitBtn}
+          onPress={handleSubmit}
+          disabled={submitting}
+          activeOpacity={0.8}
+        >
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitBtnText}>Submit Today's Scope Sheet</Text>
+          )}
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Room Picker Modal */}
@@ -331,18 +386,37 @@ export default function TechSheetScreen() {
       >
         <View style={styles.pickerContainer}>
           <View style={styles.pickerHeader}>
-            <Text style={styles.pickerTitle}>Add Room</Text>
+            <Text style={styles.pickerTitle}>Add a Room</Text>
             <TouchableOpacity onPress={() => setRoomPickerVisible(false)}>
               <Text style={styles.pickerClose}>Cancel</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Preset chips */}
+          <View style={styles.presetChips}>
+            {ROOM_PRESETS.filter(
+              (rp) => !rooms.some((r) => r.name === rp)
+            ).map((rp) => (
+              <TouchableOpacity
+                key={rp}
+                style={styles.presetChip}
+                onPress={() => handleAddRoom(rp)}
+                disabled={addingRoom}
+              >
+                <Text style={styles.presetChipText}>{rp}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Custom room input */}
           <View style={styles.customNameRow}>
             <TextInput
               style={styles.customInput}
               value={customRoomName}
               onChangeText={setCustomRoomName}
               placeholder="Custom room name..."
-              placeholderTextColor={PDQ_GRAY}
+              placeholderTextColor={TEXT_DIM}
+              onSubmitEditing={() => handleAddRoom(customRoomName)}
             />
             <TouchableOpacity
               style={[
@@ -359,21 +433,6 @@ export default function TechSheetScreen() {
               )}
             </TouchableOpacity>
           </View>
-          <Text style={styles.pickerSubLabel}>Or choose a preset:</Text>
-          <FlatList
-            data={ROOM_PRESETS}
-            keyExtractor={(item) => item}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.presetRow}
-                onPress={() => handleAddRoom(item)}
-                disabled={addingRoom}
-              >
-                <Text style={styles.presetText}>{item}</Text>
-                <Text style={styles.presetChevron}>›</Text>
-              </TouchableOpacity>
-            )}
-          />
         </View>
       </Modal>
     </View>
@@ -383,7 +442,7 @@ export default function TechSheetScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: PDQ_LIGHT,
+    backgroundColor: BG_APP,
   },
   centered: {
     flex: 1,
@@ -391,6 +450,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     gap: 12,
+    backgroundColor: BG_APP,
   },
   errorText: {
     color: PDQ_RED,
@@ -408,13 +468,13 @@ const styles = StyleSheet.create({
   },
   submittedSub: {
     fontSize: 14,
-    color: PDQ_GRAY,
+    color: TEXT_MUTED,
     textAlign: 'center',
   },
   cat3Banner: {
-    backgroundColor: CAT3_BG,
+    backgroundColor: '#ef44441a',
     borderBottomWidth: 2,
-    borderBottomColor: CAT3_BORDER,
+    borderBottomColor: PDQ_RED,
     padding: 12,
   },
   cat3BannerText: {
@@ -427,41 +487,87 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 12,
-    paddingBottom: 40,
+    padding: 16,
+    paddingBottom: 100,
   },
-  card: {
-    backgroundColor: '#fff',
+  banner: {
+    backgroundColor: BG_CARD,
     borderRadius: 10,
     padding: 14,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: PDQ_ORANGE,
   },
-  sectionLabel: {
-    fontSize: 12,
+  bannerTitle: {
     fontWeight: '700',
-    color: PDQ_GRAY,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 6,
+    fontSize: 17,
+    color: TEXT_PRIMARY,
+  },
+  bannerAddress: {
+    fontSize: 13,
+    color: TEXT_MUTED,
+  },
+  card: {
+    backgroundColor: BG_CARD,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+  },
+  statsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statsTitle: {
+    fontWeight: '700',
+    fontSize: 15,
+    color: TEXT_PRIMARY,
+  },
+  submittedBadge: {
+    backgroundColor: '#22c55e1a',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  submittedBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: PDQ_GREEN,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: BORDER_COLOR,
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: PDQ_DARK,
-    marginBottom: 12,
-    backgroundColor: '#fafafa',
+    paddingVertical: 8,
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+    marginBottom: 10,
+    backgroundColor: BG_INPUT,
   },
   inputError: {
     borderColor: PDQ_RED,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 4,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: BORDER_COLOR,
+    borderRadius: 2,
+    marginTop: 10,
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: PDQ_GREEN,
+    borderRadius: 2,
   },
   chipRow: {
     flexDirection: 'row',
@@ -469,46 +575,55 @@ const styles = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#f3f4f6',
+    borderColor: BORDER_COLOR,
+    backgroundColor: BG_INPUT,
   },
   chipActive: {
-    backgroundColor: PDQ_BLUE,
-    borderColor: PDQ_BLUE,
+    backgroundColor: PDQ_ORANGE,
+    borderColor: PDQ_ORANGE,
   },
   chipText: {
     fontSize: 13,
-    color: PDQ_DARK,
+    color: TEXT_SECONDARY,
     fontWeight: '500',
   },
   chipTextActive: {
     color: '#fff',
   },
   addRoomBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: PDQ_BLUE,
+    borderColor: BORDER_COLOR,
     borderStyle: 'dashed',
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 12,
   },
   addRoomText: {
-    color: PDQ_BLUE,
-    fontWeight: '700',
+    color: TEXT_MUTED,
+    fontWeight: '600',
     fontSize: 15,
   },
-  submitRow: {
+  submitBtn: {
+    backgroundColor: PDQ_GREEN,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
     marginTop: 8,
+  },
+  submitBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
   },
   // Room Picker
   pickerContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: BG_APP,
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -516,36 +631,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: BORDER_COLOR,
+    backgroundColor: BG_CARD,
   },
   pickerTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: PDQ_DARK,
+    color: TEXT_PRIMARY,
   },
   pickerClose: {
-    color: PDQ_BLUE,
+    color: PDQ_ORANGE,
     fontSize: 15,
+    fontWeight: '600',
+  },
+  presetChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    padding: 14,
+  },
+  presetChip: {
+    backgroundColor: BG_INPUT,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  presetChipText: {
+    color: TEXT_SECONDARY,
+    fontSize: 13,
   },
   customNameRow: {
     flexDirection: 'row',
-    padding: 12,
+    padding: 14,
     gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   customInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: BORDER_COLOR,
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: PDQ_DARK,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+    backgroundColor: BG_INPUT,
   },
   customAddBtn: {
-    backgroundColor: PDQ_BLUE,
+    backgroundColor: PDQ_ORANGE,
     borderRadius: 8,
     paddingHorizontal: 16,
     justifyContent: 'center',
@@ -558,31 +692,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 14,
-  },
-  pickerSubLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: PDQ_GRAY,
-    textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  presetRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  presetText: {
-    fontSize: 15,
-    color: PDQ_DARK,
-  },
-  presetChevron: {
-    fontSize: 18,
-    color: PDQ_GRAY,
   },
 });

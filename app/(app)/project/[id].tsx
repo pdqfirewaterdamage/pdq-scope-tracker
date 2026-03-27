@@ -16,17 +16,23 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { useAppContext } from '../../../context/AppContext';
 import {
-  PDQ_BLUE,
-  PDQ_DARK,
-  PDQ_GRAY,
-  PDQ_GREEN,
-  PDQ_LIGHT,
+  BG_APP,
+  BG_CARD,
+  BG_INPUT,
+  BORDER_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_MUTED,
+  TEXT_DIM,
+  PDQ_ORANGE,
   PDQ_RED,
+  PDQ_GREEN,
 } from '../../../constants/colors';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', {
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -86,7 +92,7 @@ export default function ProjectDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={PDQ_BLUE} />
+        <ActivityIndicator size="large" color={PDQ_ORANGE} />
       </View>
     );
   }
@@ -104,36 +110,33 @@ export default function ProjectDetailScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Project Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerTitles}>
-            <Text style={styles.jobName}>{project.job_name}</Text>
-            <Text style={styles.address}>{project.address}</Text>
-          </View>
-          <View style={styles.badges}>
-            <Badge variant={project.status === 'complete' ? 'complete' : 'active'} />
-            {project.water_category && (
-              <Badge variant={isCat3 ? 'cat3' : 'cat2'} />
-            )}
-          </View>
+      {/* Project Banner */}
+      <View style={styles.banner}>
+        <Text style={styles.jobName}>{project.job_name}</Text>
+        {project.address ? (
+          <Text style={styles.address}>{project.address}</Text>
+        ) : null}
+        <View style={styles.badgeRow}>
+          <Badge variant={project.status === 'complete' ? 'complete' : 'active'} />
+          {project.water_category && (
+            <Badge variant={isCat3 ? 'cat3' : 'cat2'} />
+          )}
+          <Text style={styles.meta}>{project.job_type}</Text>
         </View>
-        <Text style={styles.meta}>
-          {project.job_type} &bull; Created {formatDate(project.created_at)}
-        </Text>
       </View>
 
       {/* Create Today's Sheet */}
-      <View style={styles.createRow}>
-        <Button
-          label={todaySheet ? "Today's Sheet Created" : "Create Today's Sheet"}
-          variant={todaySheet ? 'secondary' : 'primary'}
-          size="md"
-          loading={creating}
-          disabled={!!todaySheet}
-          onPress={handleCreateSheet}
-        />
-      </View>
+      {!todaySheet && (
+        <View style={styles.createRow}>
+          <Button
+            label="Create Today's Sheet"
+            variant="primary"
+            size="lg"
+            loading={creating}
+            onPress={handleCreateSheet}
+          />
+        </View>
+      )}
 
       {/* Sheets List */}
       <Text style={styles.sectionTitle}>Daily Sheets</Text>
@@ -141,7 +144,7 @@ export default function ProjectDetailScreen() {
         data={sheets}
         keyExtractor={(s) => s.id}
         refreshControl={
-          <RefreshControl refreshing={false} onRefresh={refresh} tintColor={PDQ_BLUE} />
+          <RefreshControl refreshing={false} onRefresh={refresh} tintColor={PDQ_ORANGE} />
         }
         contentContainerStyle={sheets.length === 0 ? styles.emptyContainer : styles.list}
         ListEmptyComponent={
@@ -149,22 +152,32 @@ export default function ProjectDetailScreen() {
             <Text style={styles.emptyText}>No sheets yet. Create today's sheet above.</Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.sheetCard}
-            onPress={() => openSheet(item)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.sheetLeft}>
-              <Text style={styles.sheetDate}>{formatDate(item.date)}</Text>
-              <Text style={styles.sheetTech}>{item.tech_name ?? 'No tech name'}</Text>
-            </View>
-            <View style={styles.sheetRight}>
-              <Badge variant={item.submitted ? 'submitted' : 'active'} />
-              <Badge variant={item.hours_type === 'after' ? 'after' : 'regular'} />
-            </View>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          const isToday = item.date === todayISO();
+          return (
+            <TouchableOpacity
+              style={[styles.sheetCard, isToday && styles.sheetCardToday]}
+              onPress={() => openSheet(item)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.sheetLeft}>
+                <Text style={styles.sheetDate}>
+                  {isToday ? 'Today' : formatDate(item.date)}
+                </Text>
+                <Text style={styles.sheetTech}>{item.tech_name ?? 'No tech name'}</Text>
+              </View>
+              <View style={styles.sheetRight}>
+                {item.submitted && (
+                  <View style={styles.submittedBadge}>
+                    <Text style={styles.submittedText}>Submitted</Text>
+                  </View>
+                )}
+                <Badge variant={item.hours_type === 'after' ? 'after' : 'regular'} />
+                <Text style={styles.chevron}>{'\u25B8'}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        }}
       />
     </View>
   );
@@ -173,7 +186,7 @@ export default function ProjectDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: PDQ_LIGHT,
+    backgroundColor: BG_APP,
   },
   centered: {
     flex: 1,
@@ -181,66 +194,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     gap: 12,
+    backgroundColor: BG_APP,
   },
   errorText: {
     color: PDQ_RED,
     fontSize: 15,
     textAlign: 'center',
   },
-  header: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  headerTitles: {
-    flex: 1,
-    marginRight: 12,
+  banner: {
+    backgroundColor: BG_CARD,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: PDQ_ORANGE,
   },
   jobName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: PDQ_DARK,
+    color: TEXT_PRIMARY,
   },
   address: {
     fontSize: 13,
-    color: PDQ_GRAY,
+    color: TEXT_MUTED,
     marginTop: 2,
   },
-  badges: {
+  badgeRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     alignItems: 'center',
+    marginTop: 10,
+    flexWrap: 'wrap',
   },
   meta: {
     fontSize: 12,
-    color: PDQ_GRAY,
-    marginTop: 4,
+    color: TEXT_DIM,
   },
   createRow: {
-    padding: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    padding: 16,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: PDQ_GRAY,
+    color: TEXT_DIM,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
     paddingHorizontal: 16,
-    paddingTop: 16,
     paddingBottom: 8,
   },
   list: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingBottom: 24,
   },
   emptyContainer: {
@@ -253,40 +257,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    color: PDQ_GRAY,
+    color: TEXT_MUTED,
     fontSize: 14,
     textAlign: 'center',
   },
   sheetCard: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: BG_CARD,
+    borderRadius: 8,
     padding: 14,
     marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+  },
+  sheetCardToday: {
+    borderColor: PDQ_ORANGE,
   },
   sheetLeft: {
     flex: 1,
   },
   sheetDate: {
     fontSize: 15,
-    fontWeight: '600',
-    color: PDQ_DARK,
+    fontWeight: '700',
+    color: TEXT_PRIMARY,
   },
   sheetTech: {
     fontSize: 13,
-    color: PDQ_GRAY,
+    color: TEXT_MUTED,
     marginTop: 2,
   },
   sheetRight: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     alignItems: 'center',
+  },
+  submittedBadge: {
+    backgroundColor: '#22c55e1a',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  submittedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: PDQ_GREEN,
+  },
+  chevron: {
+    color: TEXT_DIM,
+    fontSize: 16,
   },
 });

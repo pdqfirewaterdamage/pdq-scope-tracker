@@ -17,10 +17,15 @@ import { getProjects, createProject, Project } from '../../lib/storage';
 import { ProjectCard } from '../../components/cards/ProjectCard';
 import { Button } from '../../components/ui/Button';
 import {
-  PDQ_BLUE,
-  PDQ_DARK,
-  PDQ_GRAY,
-  PDQ_LIGHT,
+  BG_APP,
+  BG_CARD,
+  BG_INPUT,
+  BORDER_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_MUTED,
+  TEXT_DIM,
+  PDQ_ORANGE,
   PDQ_RED,
 } from '../../constants/colors';
 import { useAppContext } from '../../context/AppContext';
@@ -113,10 +118,13 @@ export default function HomeScreen() {
     { label: 'Cat 3', value: 'cat3' },
   ];
 
+  const activeProjects = projects.filter((p) => p.status === 'active');
+  const completedProjects = projects.filter((p) => p.status === 'complete');
+
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={PDQ_BLUE} />
+        <ActivityIndicator size="large" color={PDQ_ORANGE} />
       </View>
     );
   }
@@ -125,18 +133,30 @@ export default function HomeScreen() {
     <View style={styles.container}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <Text style={styles.topBarTitle}>Projects</Text>
+        <View style={styles.topBarLeft}>
+          <View style={styles.logo}>
+            <Text style={styles.logoText}>PDQ</Text>
+          </View>
+          <View>
+            <Text style={styles.topBarTitle}>Daily Scope Tracker</Text>
+            <Text style={styles.topBarSubtitle}>PDQ Restoration</Text>
+          </View>
+        </View>
         <View style={styles.topBarActions}>
-          <Button
-            label="+ New Project"
-            variant="primary"
-            size="sm"
-            onPress={() => setModalVisible(true)}
-          />
           <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* New Project Button */}
+      <View style={styles.newProjectRow}>
+        <Button
+          label="+ New Project"
+          variant="primary"
+          size="lg"
+          onPress={() => setModalVisible(true)}
+        />
       </View>
 
       <FlatList
@@ -144,22 +164,37 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={projects.length === 0 ? styles.emptyContainer : styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PDQ_BLUE} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PDQ_ORANGE} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>&#128196;</Text>
+            <Text style={styles.emptyIcon}>&#128203;</Text>
             <Text style={styles.emptyTitle}>No projects yet</Text>
             <Text style={styles.emptySubtitle}>
               Tap "+ New Project" to get started.
             </Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <ProjectCard
-            project={item}
-            onPress={() => router.push(`/(app)/project/${item.id}`)}
-          />
+        ListHeaderComponent={
+          projects.length > 0 ? (
+            <View>
+              {activeProjects.length > 0 && (
+                <Text style={styles.sectionLabel}>Active Projects</Text>
+              )}
+            </View>
+          ) : null
+        }
+        renderItem={({ item, index }) => (
+          <View>
+            {/* Show "Completed" divider */}
+            {item.status === 'complete' && (index === 0 || projects[index - 1]?.status !== 'complete') && (
+              <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Completed</Text>
+            )}
+            <ProjectCard
+              project={item}
+              onPress={() => router.push(`/(app)/project/${item.id}`)}
+            />
+          </View>
         )}
       />
 
@@ -196,22 +231,22 @@ export default function HomeScreen() {
               </View>
             ) : null}
 
-            <Text style={styles.label}>Job Name *</Text>
+            <Text style={styles.label}>Job Name / Claim #</Text>
             <TextInput
               style={styles.input}
               value={jobName}
               onChangeText={setJobName}
-              placeholder="e.g. Smith Residence"
-              placeholderTextColor={PDQ_GRAY}
+              placeholder="e.g. Smith Residence - Water Loss"
+              placeholderTextColor={TEXT_DIM}
             />
 
-            <Text style={styles.label}>Address *</Text>
+            <Text style={styles.label}>Address</Text>
             <TextInput
               style={styles.input}
               value={address}
               onChangeText={setAddress}
               placeholder="123 Main St, City, ST"
-              placeholderTextColor={PDQ_GRAY}
+              placeholderTextColor={TEXT_DIM}
             />
 
             <Text style={styles.label}>Job Type</Text>
@@ -279,27 +314,49 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: PDQ_LIGHT,
+    backgroundColor: BG_APP,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: BG_APP,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingVertical: 16,
+    backgroundColor: BG_CARD,
+    borderBottomWidth: 2,
+    borderBottomColor: PDQ_ORANGE,
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  logo: {
+    backgroundColor: PDQ_ORANGE,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  logoText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 18,
+    letterSpacing: 1,
   },
   topBarTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: PDQ_DARK,
+    color: TEXT_PRIMARY,
+  },
+  topBarSubtitle: {
+    fontSize: 12,
+    color: TEXT_MUTED,
   },
   topBarActions: {
     flexDirection: 'row',
@@ -307,15 +364,30 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   signOutBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    borderRadius: 6,
   },
   signOutText: {
-    color: PDQ_GRAY,
-    fontSize: 13,
+    color: TEXT_MUTED,
+    fontSize: 14,
+  },
+  newProjectRow: {
+    padding: 16,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    color: TEXT_DIM,
+    marginBottom: 10,
   },
   list: {
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 100,
   },
   emptyContainer: {
     flex: 1,
@@ -333,18 +405,18 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: PDQ_DARK,
+    color: TEXT_PRIMARY,
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: PDQ_GRAY,
+    color: TEXT_MUTED,
     textAlign: 'center',
   },
   // Modal
   modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: BG_APP,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -352,22 +424,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: BORDER_COLOR,
+    backgroundColor: BG_CARD,
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 20,
     fontWeight: '700',
-    color: PDQ_DARK,
+    color: TEXT_PRIMARY,
   },
   modalClose: {
-    color: PDQ_BLUE,
+    color: PDQ_ORANGE,
     fontSize: 15,
+    fontWeight: '600',
   },
   modalBody: {
     padding: 16,
   },
   errorBox: {
-    backgroundColor: '#fff0f0',
+    backgroundColor: '#ef44441a',
     borderColor: PDQ_RED,
     borderWidth: 1,
     borderRadius: 6,
@@ -379,22 +453,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PDQ_DARK,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: TEXT_MUTED,
     marginBottom: 6,
-    marginTop: 4,
+    marginTop: 14,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: BORDER_COLOR,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
-    color: PDQ_DARK,
+    color: TEXT_SECONDARY,
     marginBottom: 14,
-    backgroundColor: '#fafafa',
+    backgroundColor: BG_INPUT,
   },
   chipRow: {
     flexDirection: 'row',
@@ -404,15 +480,15 @@ const styles = StyleSheet.create({
   },
   chip: {
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    backgroundColor: '#f3f4f6',
+    borderColor: BORDER_COLOR,
+    backgroundColor: BG_INPUT,
   },
   chipActive: {
-    backgroundColor: PDQ_BLUE,
-    borderColor: PDQ_BLUE,
+    backgroundColor: PDQ_ORANGE,
+    borderColor: PDQ_ORANGE,
   },
   chipCat3: {
     backgroundColor: PDQ_RED,
@@ -420,14 +496,14 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 13,
-    color: PDQ_DARK,
+    color: TEXT_SECONDARY,
     fontWeight: '500',
   },
   chipTextActive: {
     color: '#fff',
   },
   createBtn: {
-    marginTop: 8,
+    marginTop: 20,
     marginBottom: 40,
   },
 });

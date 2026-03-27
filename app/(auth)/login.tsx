@@ -11,7 +11,18 @@ import {
   ScrollView,
 } from 'react-native';
 import { useAppContext } from '../../context/AppContext';
-import { PDQ_BLUE, PDQ_DARK, PDQ_GRAY, PDQ_RED, PDQ_LIGHT } from '../../constants/colors';
+import {
+  BG_APP,
+  BG_CARD,
+  BG_INPUT,
+  BORDER_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_MUTED,
+  TEXT_DIM,
+  PDQ_ORANGE,
+  PDQ_RED,
+} from '../../constants/colors';
 
 export default function LoginScreen() {
   const { signIn } = useAppContext();
@@ -50,8 +61,8 @@ export default function LoginScreen() {
           <View style={styles.logoCircle}>
             <Text style={styles.logoText}>PDQ</Text>
           </View>
-          <Text style={styles.brand}>PDQ Restoration</Text>
-          <Text style={styles.subtitle}>Scope Tracker</Text>
+          <Text style={styles.brand}>Daily Scope Tracker</Text>
+          <Text style={styles.subtitle}>PDQ Restoration</Text>
         </View>
 
         {/* Card */}
@@ -70,7 +81,7 @@ export default function LoginScreen() {
             value={email}
             onChangeText={setEmail}
             placeholder="technician@pdqrestoration.com"
-            placeholderTextColor={PDQ_GRAY}
+            placeholderTextColor={TEXT_DIM}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -83,7 +94,7 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             placeholder="••••••••"
-            placeholderTextColor={PDQ_GRAY}
+            placeholderTextColor={TEXT_DIM}
             secureTextEntry
             editable={!loading}
           />
@@ -113,7 +124,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: PDQ_LIGHT,
+    backgroundColor: BG_APP,
   },
   container: {
     flexGrow: 1,
@@ -126,48 +137,43 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: PDQ_BLUE,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
+    backgroundColor: PDQ_ORANGE,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 16,
   },
   logoText: {
     color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 1,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
   brand: {
     fontSize: 22,
     fontWeight: '700',
-    color: PDQ_BLUE,
+    color: TEXT_PRIMARY,
   },
   subtitle: {
     fontSize: 14,
-    color: PDQ_GRAY,
+    color: TEXT_MUTED,
     marginTop: 2,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: BG_CARD,
     borderRadius: 12,
     padding: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: PDQ_DARK,
+    color: TEXT_PRIMARY,
     marginBottom: 16,
   },
   errorBox: {
-    backgroundColor: '#fff0f0',
+    backgroundColor: '#ef44441a',
     borderColor: PDQ_RED,
     borderWidth: 1,
     borderRadius: 6,
@@ -179,25 +185,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PDQ_DARK,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    color: TEXT_MUTED,
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: BORDER_COLOR,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
-    color: PDQ_DARK,
+    color: TEXT_SECONDARY,
     marginBottom: 14,
-    backgroundColor: '#fafafa',
+    backgroundColor: BG_INPUT,
   },
   button: {
-    backgroundColor: PDQ_BLUE,
-    borderRadius: 8,
+    backgroundColor: PDQ_ORANGE,
+    borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 4,
@@ -207,12 +215,12 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
   footer: {
     textAlign: 'center',
-    color: PDQ_GRAY,
+    color: TEXT_DIM,
     fontSize: 12,
     marginTop: 32,
   },
