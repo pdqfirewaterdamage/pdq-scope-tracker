@@ -6,6 +6,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
+  TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSheet } from '../../../../hooks/useSheet';
@@ -13,15 +15,18 @@ import { getProject, Project } from '../../../../lib/storage';
 import { ReportBuilder } from '../../../../components/report/ReportBuilder';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
-import { generateAndSharePDF } from '../../../../lib/pdf';
+import { buildReportHTML } from '../../../../lib/templates';
 import {
-  PDQ_BLUE,
-  PDQ_DARK,
-  PDQ_GRAY,
-  PDQ_LIGHT,
+  BG_APP,
+  BG_CARD,
+  BORDER_COLOR,
+  TEXT_PRIMARY,
+  TEXT_MUTED,
+  TEXT_DIM,
+  PDQ_ORANGE,
   PDQ_RED,
-  CAT3_BG,
-  CAT3_BORDER,
+  PDQ_GREEN,
+  PDQ_BLUE,
 } from '../../../../constants/colors';
 
 export default function EstimatorScreen() {
@@ -44,7 +49,23 @@ export default function EstimatorScreen() {
         ...r,
         items: r.items,
       }));
-      await generateAndSharePDF(project, sheet, roomsWithItems);
+
+      if (Platform.OS === 'web') {
+        // Web: open HTML in new tab for printing
+        const html = buildReportHTML(project, sheet, roomsWithItems);
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank');
+        if (w) {
+          w.onload = () => {
+            setTimeout(() => w.print(), 500);
+          };
+        }
+      } else {
+        // Native: use expo-print + expo-sharing
+        const { generateAndSharePDF } = require('../../../../lib/pdf');
+        await generateAndSharePDF(project, sheet, roomsWithItems);
+      }
     } catch (err: unknown) {
       Alert.alert('Export Failed', err instanceof Error ? err.message : 'Could not export PDF');
     } finally {
@@ -55,7 +76,7 @@ export default function EstimatorScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={PDQ_BLUE} />
+        <ActivityIndicator size="large" color={PDQ_ORANGE} />
       </View>
     );
   }
@@ -70,58 +91,75 @@ export default function EstimatorScreen() {
   }
 
   const isCat3 = project?.water_category === 'cat3';
+  const doneCount = rooms.reduce(
+    (acc, r) => acc + r.items.filter((i: any) => i.status === 'done').length,
+    0
+  );
+  const totalCount = rooms.reduce((acc, r) => acc + r.items.length, 0);
 
   return (
     <View style={styles.container}>
-      {/* Summary Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.jobName}>{project?.job_name ?? 'Loading…'}</Text>
-            <Text style={styles.address}>{project?.address ?? ''}</Text>
-          </View>
-          <View style={styles.badges}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        {/* Header Card */}
+        <View style={styles.headerCard}>
+          <Text style={styles.jobName}>{project?.job_name ?? 'Loading...'}</Text>
+          {project?.address ? (
+            <Text style={styles.address}>{project.address}</Text>
+          ) : null}
+
+          <View style={styles.badgeRow}>
             {isCat3 ? <Badge variant="cat3" /> : <Badge variant="cat2" />}
             <Badge variant={sheet.hours_type === 'after' ? 'after' : 'regular'} />
             {sheet.submitted && <Badge variant="submitted" />}
           </View>
-        </View>
-        <View style={styles.metaRow}>
-          <Text style={styles.meta}>
-            Tech: {sheet.tech_name ?? 'N/A'}
-          </Text>
-          <Text style={styles.meta}>
-            Date:{' '}
-            {sheet.date
-              ? new Date(sheet.date).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : 'N/A'}
-          </Text>
-        </View>
-      </View>
 
-      {isCat3 && (
-        <View style={styles.cat3Banner}>
-          <Text style={styles.cat3BannerText}>&#9888; CATEGORY 3 JOB</Text>
-        </View>
-      )}
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>Tech: {sheet.tech_name ?? 'N/A'}</Text>
+            <Text style={styles.metaText}>
+              {sheet.date
+                ? new Date(sheet.date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
+                : ''}
+            </Text>
+          </View>
 
-      {/* Export Button */}
-      <View style={styles.exportRow}>
-        <Button
-          label="Export PDF Report"
-          variant="primary"
-          size="md"
-          loading={exporting}
+          {/* Progress */}
+          <View style={styles.progressRow}>
+            <Text style={styles.progressText}>
+              {doneCount}/{totalCount} items completed
+            </Text>
+            <View style={styles.progressBar}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: totalCount > 0 ? `${(doneCount / totalCount) * 100}%` : '0%' },
+                ]}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* Share/Export Button */}
+        <TouchableOpacity
+          style={styles.shareBtn}
           onPress={handleExportPDF}
-        />
-      </View>
+          disabled={exporting}
+          activeOpacity={0.8}
+        >
+          {exporting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.shareBtnText}>
+              {'\uD83D\uDCC4'} Share as PDF
+            </Text>
+          )}
+        </TouchableOpacity>
 
-      {/* Report Preview */}
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        {/* Document Preview */}
+        <Text style={styles.previewLabel}>DOCUMENT PREVIEW</Text>
         {project && sheet ? (
           <ReportBuilder
             project={project}
@@ -129,7 +167,7 @@ export default function EstimatorScreen() {
             rooms={rooms.map((r) => ({ ...r, items: r.items }))}
           />
         ) : (
-          <ActivityIndicator color={PDQ_BLUE} style={{ marginTop: 24 }} />
+          <ActivityIndicator color={PDQ_ORANGE} style={{ marginTop: 24 }} />
         )}
       </ScrollView>
     </View>
@@ -139,7 +177,7 @@ export default function EstimatorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: PDQ_LIGHT,
+    backgroundColor: BG_APP,
   },
   centered: {
     flex: 1,
@@ -147,74 +185,93 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     gap: 12,
+    backgroundColor: BG_APP,
   },
   errorText: {
     color: PDQ_RED,
     fontSize: 15,
     textAlign: 'center',
   },
-  header: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-  jobName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: PDQ_DARK,
-  },
-  address: {
-    fontSize: 13,
-    color: PDQ_GRAY,
-    marginTop: 2,
-  },
-  badges: {
-    flexDirection: 'row',
-    gap: 6,
-    alignItems: 'center',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 8,
-  },
-  meta: {
-    fontSize: 13,
-    color: PDQ_GRAY,
-  },
-  cat3Banner: {
-    backgroundColor: CAT3_BG,
-    borderBottomWidth: 2,
-    borderBottomColor: CAT3_BORDER,
-    padding: 10,
-    alignItems: 'center',
-  },
-  cat3BannerText: {
-    color: PDQ_RED,
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  exportRow: {
-    padding: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: 12,
-    paddingBottom: 40,
+    padding: 16,
+    paddingBottom: 60,
+  },
+  headerCard: {
+    backgroundColor: BG_CARD,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: PDQ_ORANGE,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+  },
+  jobName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: TEXT_PRIMARY,
+  },
+  address: {
+    fontSize: 13,
+    color: TEXT_MUTED,
+    marginTop: 2,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
+    flexWrap: 'wrap',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 10,
+  },
+  metaText: {
+    fontSize: 13,
+    color: TEXT_MUTED,
+  },
+  progressRow: {
+    marginTop: 10,
+  },
+  progressText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: PDQ_GREEN,
+    marginBottom: 6,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: BORDER_COLOR,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: PDQ_GREEN,
+    borderRadius: 2,
+  },
+  shareBtn: {
+    backgroundColor: PDQ_ORANGE,
+    borderRadius: 10,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  shareBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: TEXT_DIM,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    marginBottom: 10,
   },
 });
