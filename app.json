@@ -1,15 +1,22 @@
 {
   "expo": {
-    "name": "PDQ Scope Tracker",
+    "name": "PDQ Restoration",
     "slug": "pdq-scope-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "pdqscope",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#0077C8"
+      "backgroundColor": "#0f172a"
+    },
+    "web": {
+      "favicon": "./public/apple-touch-icon.png",
+      "name": "PDQ Restoration",
+      "shortName": "PDQ",
+      "themeColor": "#f97316",
+      "backgroundColor": "#0f172a"
     },
     "ios": {
       "supportsTablet": false,
