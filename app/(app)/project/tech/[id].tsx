@@ -190,25 +190,7 @@ export default function TechSheetScreen() {
       return;
     }
 
-    if (doneWithoutHours > 0) {
-      const missingByRoom: string[] = [];
-      for (const room of rooms) {
-        const missing = (room.items as Item[]).filter(
-          (i) => i.status === 'done' && !i.no_hours && !i.hours
-        );
-        if (missing.length > 0) {
-          const itemNames = missing.slice(0, 5).map((i) => `  \u2713 ${i.label}`).join('\n');
-          const more = missing.length > 5 ? `\n  ...and ${missing.length - 5} more` : '';
-          missingByRoom.push(`${room.name} (${missing.length}):\n${itemNames}${more}`);
-        }
-      }
-      Alert.alert(
-        `${doneWithoutHours} Item${doneWithoutHours > 1 ? 's' : ''} Missing Hours`,
-        `Enter hours for all completed items.\n\n${missingByRoom.join('\n\n')}`,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
+    // Hours are optional — don't block submission for missing hours
 
     setSubmitting(true);
     try {
