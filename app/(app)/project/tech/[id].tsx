@@ -70,6 +70,27 @@ export default function TechSheetScreen() {
 
   const isCat3 = project?.water_category === 'cat3';
 
+  // Auto-save tech name on blur
+  const saveTechName = useCallback(async () => {
+    if (!sheet || !techName.trim()) return;
+    try {
+      await updateSheet(sheet.id, { tech_name: techName.trim() });
+    } catch (e) {
+      console.error('Failed to save tech name', e);
+    }
+  }, [sheet, techName]);
+
+  // Auto-save hours type on change
+  const saveHoursType = useCallback(async (ht: 'regular' | 'after') => {
+    setHoursType(ht);
+    if (!sheet) return;
+    try {
+      await updateSheet(sheet.id, { hours_type: ht });
+    } catch (e) {
+      console.error('Failed to save hours type', e);
+    }
+  }, [sheet]);
+
   const handleAddRoom = useCallback(
     async (roomName: string) => {
       if (!sheet || !project) return;
@@ -277,6 +298,7 @@ export default function TechSheetScreen() {
               setTechName(t);
               if (t.trim()) setTechNameError(false);
             }}
+            onBlur={saveTechName}
             placeholder="Tech name"
             placeholderTextColor={TEXT_DIM}
           />
@@ -308,7 +330,7 @@ export default function TechSheetScreen() {
               <TouchableOpacity
                 key={ht}
                 style={[styles.chip, hoursType === ht && styles.chipActive]}
-                onPress={() => setHoursType(ht)}
+                onPress={() => saveHoursType(ht)}
               >
                 <Text
                   style={[styles.chipText, hoursType === ht && styles.chipTextActive]}
