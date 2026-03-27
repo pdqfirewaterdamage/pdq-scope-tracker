@@ -1,6 +1,20 @@
 import React from 'react';
-import { Stack } from 'expo-router';
-import { BG_HEADER, BG_APP, PDQ_GREEN, BORDER_COLOR, TEXT_PRIMARY } from '../../constants/colors';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { BG_HEADER, BG_APP, PDQ_GREEN, TEXT_PRIMARY } from '../../constants/colors';
+
+function HomeButton() {
+  const router = useRouter();
+  return (
+    <TouchableOpacity
+      onPress={() => router.replace('/(app)')}
+      style={styles.homeBtn}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.homeBtnText}>{'\u2302'}</Text>
+    </TouchableOpacity>
+  );
+}
 
 export default function AppLayout() {
   return (
@@ -12,11 +26,12 @@ export default function AppLayout() {
         contentStyle: { backgroundColor: BG_APP },
         headerBackTitle: 'Back',
         headerShadowVisible: false,
+        headerRight: () => <HomeButton />,
       }}
     >
       <Stack.Screen
         name="index"
-        options={{ headerShown: false }}
+        options={{ headerShown: false, headerRight: undefined }}
       />
       <Stack.Screen
         name="scope/index"
@@ -41,3 +56,20 @@ export default function AppLayout() {
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  homeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  homeBtnText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+});
