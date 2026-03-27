@@ -195,12 +195,10 @@ export default function TechSheetScreen() {
     setSubmitting(true);
     try {
       await submitSheet(techName.trim());
-      Alert.alert('Submitted!', 'Sheet submitted successfully.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      // Navigate to estimator view to show the PDF preview
+      router.replace(`/(app)/project/estimator/${id}`);
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to submit sheet');
-    } finally {
       setSubmitting(false);
     }
   }, [techName, rooms, submitSheet, router]);
@@ -223,17 +221,11 @@ export default function TechSheetScreen() {
   }
 
   if (sheet.submitted) {
+    // Redirect to estimator view for submitted sheets
+    router.replace(`/(app)/project/estimator/${id}`);
     return (
       <View style={styles.centered}>
-        <Text style={styles.submittedIcon}>{'\u2713'}</Text>
-        <Text style={styles.submittedText}>Sheet Submitted</Text>
-        <Text style={styles.submittedSub}>
-          This sheet was submitted on{' '}
-          {sheet.submitted_at
-            ? new Date(sheet.submitted_at).toLocaleDateString()
-            : 'N/A'}
-        </Text>
-        <Button label="Go Back" variant="outline" size="md" onPress={() => router.back()} />
+        <ActivityIndicator size="large" color={PDQ_ORANGE} />
       </View>
     );
   }
