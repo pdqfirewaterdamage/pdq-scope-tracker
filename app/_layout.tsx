@@ -13,11 +13,12 @@ function RootLayoutNav() {
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
-    // Auth temporarily disabled — always go to app
-    if (inAuthGroup) {
+    if (!user && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (user && inAuthGroup) {
       router.replace('/(app)');
     }
-  }, [loading, segments]);
+  }, [user, loading, segments]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
