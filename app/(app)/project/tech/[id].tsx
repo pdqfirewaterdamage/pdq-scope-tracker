@@ -151,18 +151,39 @@ export default function TechSheetScreen() {
     const { pending, doneWithoutHours } = countPendingItems(allRoomItems);
 
     if (pending > 0) {
+      // Build a list of pending items grouped by room
+      const pendingByRoom: string[] = [];
+      for (const room of rooms) {
+        const pendingItems = (room.items as Item[]).filter((i) => i.status === 'pending');
+        if (pendingItems.length > 0) {
+          const itemNames = pendingItems.slice(0, 5).map((i) => `  \u25CB ${i.label}`).join('\n');
+          const more = pendingItems.length > 5 ? `\n  ...and ${pendingItems.length - 5} more` : '';
+          pendingByRoom.push(`${room.name} (${pendingItems.length}):\n${itemNames}${more}`);
+        }
+      }
       Alert.alert(
-        'Pending Items',
-        `There are ${pending} item(s) still marked as pending. Please mark all items as Done or N/A before submitting.`,
+        `${pending} Pending Item${pending > 1 ? 's' : ''}`,
+        `Mark all items as Done (\u2713) or N/A (\u2014) before submitting.\n\n${pendingByRoom.join('\n\n')}`,
         [{ text: 'OK' }]
       );
       return;
     }
 
     if (doneWithoutHours > 0) {
+      const missingByRoom: string[] = [];
+      for (const room of rooms) {
+        const missing = (room.items as Item[]).filter(
+          (i) => i.status === 'done' && !i.no_hours && !i.hours
+        );
+        if (missing.length > 0) {
+          const itemNames = missing.slice(0, 5).map((i) => `  \u2713 ${i.label}`).join('\n');
+          const more = missing.length > 5 ? `\n  ...and ${missing.length - 5} more` : '';
+          missingByRoom.push(`${room.name} (${missing.length}):\n${itemNames}${more}`);
+        }
+      }
       Alert.alert(
-        'Missing Hours',
-        `${doneWithoutHours} done item(s) are missing hours. Please enter hours for all completed items before submitting.`,
+        `${doneWithoutHours} Item${doneWithoutHours > 1 ? 's' : ''} Missing Hours`,
+        `Enter hours for all completed items.\n\n${missingByRoom.join('\n\n')}`,
         [{ text: 'OK' }]
       );
       return;
