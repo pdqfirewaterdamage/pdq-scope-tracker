@@ -15,7 +15,7 @@ import { getProject, Project } from '../../../../lib/storage';
 import { ReportBuilder } from '../../../../components/report/ReportBuilder';
 import { Button } from '../../../../components/ui/Button';
 import { Badge } from '../../../../components/ui/Badge';
-import { buildReportHTML } from '../../../../lib/templates';
+import { buildReportHTML, buildCompleteReportHTML } from '../../../../lib/templates';
 import {
   BG_APP,
   BG_CARD,
@@ -51,8 +51,8 @@ export default function EstimatorScreen() {
       }));
 
       if (Platform.OS === 'web') {
-        // Web: open HTML in new tab for printing
-        const html = buildReportHTML(project, sheet, roomsWithItems);
+        // Web: open complete 6-tab report in new tab
+        const html = buildCompleteReportHTML(project, [sheet], roomsWithItems);
         const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const w = window.open(url, '_blank');

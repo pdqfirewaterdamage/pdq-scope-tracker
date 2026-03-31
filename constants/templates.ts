@@ -13,6 +13,7 @@ export interface ScopeItem {
   hasNote?: boolean;
   forceHeader?: boolean;
   cat3Suffix?: boolean;
+  requirePhoto?: boolean;
   sortOrder: number;
 }
 
@@ -30,6 +31,8 @@ export interface RoomItem extends ScopeItem {
   hoursType?: 'regular' | 'after';
   note?: string;
   photos?: string[];
+  qtyValue?: string;
+  dropValue?: string;
 }
 
 export const SCOPE_TEMPLATE: ScopeSection[] = [
@@ -393,6 +396,7 @@ export const SCOPE_TEMPLATE: ScopeSection[] = [
         phase: '3',
         subsection: 'Drying Equipment Setup',
         inputType: 'qty',
+        requirePhoto: true,
         sortOrder: 41,
       },
     ],
@@ -409,6 +413,7 @@ export const SCOPE_TEMPLATE: ScopeSection[] = [
         phase: '3',
         subsection: 'Asbestos / Lead Testing',
         inputType: 'qty',
+        requirePhoto: true,
         sortOrder: 42,
       },
       {
@@ -417,6 +422,7 @@ export const SCOPE_TEMPLATE: ScopeSection[] = [
         phase: '3',
         subsection: 'Asbestos / Lead Testing',
         inputType: 'qty',
+        requirePhoto: true,
         sortOrder: 43,
       },
     ],
@@ -507,6 +513,7 @@ export const SCOPE_TEMPLATE: ScopeSection[] = [
         phase: 'general',
         subsection: 'General / Daily',
         noHours: true,
+        requirePhoto: true,
         sortOrder: 55,
       },
       {
@@ -531,6 +538,7 @@ export const SCOPE_TEMPLATE: ScopeSection[] = [
         phase: 'general',
         subsection: 'General / Daily',
         noHours: true,
+        requirePhoto: true,
         sortOrder: 58,
       },
     ],
@@ -665,6 +673,8 @@ export function makeRoomItems(waterCategory: 'cat2' | 'cat3'): RoomItem[] {
       hoursType: 'regular',
       note: '',
       photos: [],
+      qtyValue: undefined,
+      dropValue: undefined,
     };
   });
 }

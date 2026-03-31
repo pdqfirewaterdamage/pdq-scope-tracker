@@ -79,6 +79,7 @@ create table if not exists sheets (
   contents_hours numeric,
   submitted boolean not null default false,
   submitted_at timestamptz,
+  weekend_sheet boolean not null default false,
   created_at timestamptz not null default now(),
   date date not null default current_date
 );
@@ -112,6 +113,7 @@ create table if not exists rooms (
   walls_data jsonb,
   ceiling_data jsonb,
   flooring_data jsonb,
+  measurements jsonb,
   created_at timestamptz not null default now()
 );
 
@@ -156,10 +158,13 @@ create table if not exists items (
   mandatory boolean not null default false,
   has_note boolean,
   sort_order int not null default 0,
+  require_photo boolean not null default false,
   status text not null default 'pending' check (status in ('pending', 'done', 'not_needed')),
   hours numeric,
   hours_type text not null default 'regular' check (hours_type in ('regular', 'after')),
   note text,
+  qty_value text,
+  drop_value text,
   created_at timestamptz not null default now()
 );
 

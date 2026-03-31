@@ -105,10 +105,12 @@ export default function TechSheetScreen() {
           walls_data: null,
           ceiling_data: null,
           flooring_data: null,
+          measurements: null,
         });
 
         const waterCat = project.water_category === 'cat3' ? 'cat3' : 'cat2';
         const templateItems: RoomItem[] = makeRoomItems(waterCat);
+        const isWeekendSheet = sheet.weekend_sheet;
         const dbItems = templateItems.map((ti) => ({
           room_id: room.id,
           scope_item_id: ti.id,
@@ -121,11 +123,14 @@ export default function TechSheetScreen() {
           no_hours: ti.noHours ?? false,
           mandatory: ti.mandatory ?? false,
           has_note: ti.hasNote ?? null,
+          require_photo: ti.requirePhoto ?? false,
           sort_order: ti.sortOrder,
           status: 'pending' as const,
           hours: null,
-          hours_type: 'regular' as const,
+          hours_type: isWeekendSheet ? 'after' as const : 'regular' as const,
           note: null,
+          qty_value: null,
+          drop_value: null,
         }));
 
         await createItems(dbItems);
@@ -171,7 +176,11 @@ export default function TechSheetScreen() {
 
     const { pending, doneWithoutHours } = countPendingItems(allRoomItems);
 
-    if (pending > 0) {
+    // General-only submit: if no rooms exist, allow submit as long as
+    // general items (from contents section) are answered
+    const hasRooms = rooms.length > 0;
+
+    if (pending > 0 && hasRooms) {
       // Build a list of pending items grouped by room
       const pendingByRoom: string[] = [];
       for (const room of rooms) {
@@ -232,6 +241,15 @@ export default function TechSheetScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Weekend Banner */}
+      {sheet.weekend_sheet && (
+        <View style={styles.weekendBanner}>
+          <Text style={styles.weekendBannerText}>
+            {'\uD83D\uDFE0'} WEEKEND SHEET — All hours default to After Hours
+          </Text>
+        </View>
+      )}
+
       {/* Cat 3 Warning Banner */}
       {isCat3 && (
         <View style={styles.cat3Banner}>
@@ -486,6 +504,18 @@ const styles = StyleSheet.create({
   submittedSub: {
     fontSize: 14,
     color: TEXT_MUTED,
+    textAlign: 'center',
+  },
+  weekendBanner: {
+    backgroundColor: '#FF6B001a',
+    borderBottomWidth: 2,
+    borderBottomColor: PDQ_ORANGE,
+    padding: 12,
+  },
+  weekendBannerText: {
+    color: PDQ_ORANGE,
+    fontWeight: '700',
+    fontSize: 13,
     textAlign: 'center',
   },
   cat3Banner: {

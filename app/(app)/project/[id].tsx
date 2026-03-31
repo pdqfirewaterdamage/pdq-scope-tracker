@@ -8,10 +8,13 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
+  TextInput,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useProject } from '../../../hooks/useProject';
-import { createSheet, Sheet } from '../../../lib/storage';
+import { createSheetWithCarryForward, isWeekend, Sheet } from '../../../lib/storage';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { useAppContext } from '../../../context/AppContext';
@@ -49,26 +52,27 @@ export default function ProjectDetailScreen() {
   const { profile } = useAppContext();
   const { project, sheets, loading, error, refresh } = useProject(id);
   const [creating, setCreating] = useState(false);
+  const [addDayVisible, setAddDayVisible] = useState(false);
+  const [backdateInput, setBackdateInput] = useState('');
 
   const todaySheet = sheets.find((s) => s.date === todayISO());
 
-  const handleCreateSheet = useCallback(async () => {
+  const createSheetForDate = useCallback(async (date: string) => {
     if (!project) return;
-    if (todaySheet) {
-      Alert.alert('Sheet exists', 'A sheet for today already exists.');
+    const existing = sheets.find((s) => s.date === date);
+    if (existing) {
+      Alert.alert('Sheet exists', `A sheet for ${date} already exists.`);
       return;
     }
     setCreating(true);
     try {
-      const sheet = await createSheet({
-        project_id: project.id,
-        tech_name: profile?.full_name ?? null,
-        hours_type: 'regular',
-        contents_status: null,
-        contents_boxes: null,
-        contents_hours: null,
-        date: todayISO(),
-      });
+      const sheet = await createSheetWithCarryForward(
+        project.id,
+        date,
+        profile?.full_name ?? null,
+        project.water_category,
+      );
+      await refresh();
       if (profile?.role === 'estimator') {
         router.push(`/(app)/project/estimator/${sheet.id}`);
       } else {
@@ -79,7 +83,26 @@ export default function ProjectDetailScreen() {
     } finally {
       setCreating(false);
     }
-  }, [project, todaySheet, profile, router]);
+  }, [project, sheets, profile, router, refresh]);
+
+  const handleCreateSheet = useCallback(async () => {
+    await createSheetForDate(todayISO());
+  }, [createSheetForDate]);
+
+  const handleAddDay = useCallback(async () => {
+    const date = backdateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      Alert.alert('Invalid Date', 'Please enter a date in YYYY-MM-DD format.');
+      return;
+    }
+    if (date >= todayISO()) {
+      Alert.alert('Invalid Date', 'Backdate must be before today.');
+      return;
+    }
+    setAddDayVisible(false);
+    setBackdateInput('');
+    await createSheetForDate(date);
+  }, [backdateInput, createSheetForDate]);
 
   function openSheet(sheet: Sheet) {
     if (profile?.role === 'estimator') {
@@ -129,7 +152,7 @@ export default function ProjectDetailScreen() {
       {!todaySheet && (
         <View style={styles.createRow}>
           <Button
-            label="Create Today's Sheet"
+            label={isWeekend(todayISO()) ? "Create Today's Sheet (Weekend)" : "Create Today's Sheet"}
             variant="primary"
             size="lg"
             loading={creating}
@@ -137,6 +160,17 @@ export default function ProjectDetailScreen() {
           />
         </View>
       )}
+
+      {/* Add Day (backdate) */}
+      <View style={styles.addDayRow}>
+        <TouchableOpacity
+          style={styles.addDayBtn}
+          onPress={() => setAddDayVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.addDayText}>+ Add Day (backdate missed sheet)</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Sheets List */}
       <Text style={styles.sectionTitle}>Daily Sheets</Text>
@@ -167,6 +201,11 @@ export default function ProjectDetailScreen() {
                 <Text style={styles.sheetTech}>{item.tech_name ?? 'No tech name'}</Text>
               </View>
               <View style={styles.sheetRight}>
+                {item.weekend_sheet && (
+                  <View style={styles.weekendBadge}>
+                    <Text style={styles.weekendBadgeText}>WKD</Text>
+                  </View>
+                )}
                 {item.submitted && (
                   <View style={styles.submittedBadge}>
                     <Text style={styles.submittedText}>Submitted</Text>
@@ -179,6 +218,42 @@ export default function ProjectDetailScreen() {
           );
         }}
       />
+
+      {/* Add Day Modal */}
+      <Modal
+        visible={addDayVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setAddDayVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Add Missed Day</Text>
+            <TouchableOpacity onPress={() => setAddDayVisible(false)}>
+              <Text style={styles.modalClose}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalBody}>
+            <Text style={styles.modalLabel}>Enter date (YYYY-MM-DD)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={backdateInput}
+              onChangeText={setBackdateInput}
+              placeholder="2026-03-28"
+              placeholderTextColor={TEXT_DIM}
+              keyboardType="default"
+              autoFocus
+            />
+            <Button
+              label={creating ? 'Creating...' : 'Create Sheet'}
+              variant="primary"
+              size="lg"
+              loading={creating}
+              onPress={handleAddDay}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -307,5 +382,75 @@ const styles = StyleSheet.create({
   chevron: {
     color: TEXT_DIM,
     fontSize: 16,
+  },
+  weekendBadge: {
+    backgroundColor: '#FF6B001a',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  weekendBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: PDQ_ORANGE,
+  },
+  addDayRow: {
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  addDayBtn: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    borderStyle: 'dashed',
+  },
+  addDayText: {
+    color: TEXT_MUTED,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: BG_APP,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+    backgroundColor: BG_CARD,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: TEXT_PRIMARY,
+  },
+  modalClose: {
+    color: PDQ_ORANGE,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  modalBody: {
+    padding: 16,
+    gap: 16,
+  },
+  modalLabel: {
+    fontSize: 14,
+    color: TEXT_SECONDARY,
+    fontWeight: '500',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: TEXT_PRIMARY,
+    backgroundColor: BG_INPUT,
   },
 });

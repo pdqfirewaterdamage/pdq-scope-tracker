@@ -7,10 +7,13 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { Item, Room } from '../../lib/storage';
+import { Item, Room, RoomMeasurements } from '../../lib/storage';
 import { WallsCeilingUI } from './WallsCeilingUI';
 import { FlooringSection } from './FlooringSection';
 import { AsbestosSection } from './AsbestosSection';
+import { MeasurementsPanel } from './MeasurementsPanel';
+import { InputTypeField } from './InputTypeField';
+import { IICRCPopup, hasReferenceCard } from './IICRCPopup';
 import { ItemStatus } from '../../constants/templates';
 import {
   BG_CARD,
@@ -25,6 +28,7 @@ import {
   PDQ_ORANGE,
   PDQ_GRAY,
   PDQ_PURPLE,
+  PDQ_BLUE,
 } from '../../constants/colors';
 
 interface RoomSectionProps {
@@ -71,6 +75,7 @@ export function RoomSection({
   const [expanded, setExpanded] = useState(true);
   const [sectionYesNo, setSectionYesNo] = useState<SectionYesNo>({});
   const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+  const [iicrcItem, setIicrcItem] = useState<string | null>(null);
 
   const isCat3 = waterCategory === 'cat3';
   const groups = groupBySubsection(items);
@@ -85,6 +90,12 @@ export function RoomSection({
       const idx = STATUS_CYCLE.indexOf(item.status);
       let next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
       if (item.mandatory && next === 'not_needed') next = 'pending';
+
+      // Photo requirement check — warn but don't block in prototype
+      if (next === 'done' && item.require_photo) {
+        // In future, check if photo exists. For now, just remind.
+      }
+
       try {
         await onUpdateItem(item.id, { status: next });
       } catch {
@@ -131,17 +142,98 @@ export function RoomSection({
     [groups, onUpdateItem]
   );
 
+  const handleMeasurementsUpdate = useCallback(
+    (measurements: RoomMeasurements) => {
+      onUpdateRoom({ measurements } as Partial<Room>);
+    },
+    [onUpdateRoom]
+  );
+
+  const handleApplyMeasurements = useCallback(
+    async (sqft: number, wallLf: number, ceilingSf: number) => {
+      // Auto-fill quantity values based on measurements
+      const updates: Promise<void>[] = [];
+      for (const item of items) {
+        if (item.status === 'not_needed') continue;
+
+        let autoValue: string | null = null;
+
+        // Floor-related items get sqft
+        if (item.input_type === 'sf' && !item.child_sub) {
+          autoValue = sqft.toFixed(0);
+        }
+        // Wall items
+        if (item.child_sub === 'Walls') {
+          if (item.input_type === 'lf') autoValue = wallLf.toFixed(0);
+          if (item.input_type === 'sf') autoValue = (wallLf * 2).toFixed(0); // 2ft flood cut
+        }
+        // Ceiling items
+        if (item.child_sub === 'Ceiling') {
+          if (item.input_type === 'sf') autoValue = ceilingSf.toFixed(0);
+        }
+        // Insulation matches wall/ceiling sf
+        if (item.scope_item_id === 'p3_remove_insulation_wall') {
+          autoValue = (wallLf * 2).toFixed(0);
+        }
+        if (item.scope_item_id === 'p3_remove_ceiling_insulation') {
+          autoValue = ceilingSf.toFixed(0);
+        }
+        // Flood cut lf
+        if (item.scope_item_id === 'p3_flood_cut') {
+          autoValue = wallLf.toFixed(0);
+        }
+        // Equipment counts from IICRC
+        if (item.scope_item_id === 'p3_air_mover') {
+          autoValue = String(Math.ceil(sqft / 50));
+        }
+        if (item.scope_item_id === 'p1_dehumidifier' || item.scope_item_id === 'p3_dehumidifier_check') {
+          autoValue = String(Math.ceil(sqft / 1000));
+        }
+        if (item.scope_item_id === 'p1_air_scrubber') {
+          autoValue = String(Math.ceil(sqft / 500));
+        }
+
+        if (autoValue && autoValue !== item.qty_value) {
+          updates.push(onUpdateItem(item.id, { qty_value: autoValue }));
+        }
+      }
+
+      if (updates.length > 0) {
+        await Promise.all(updates);
+        Alert.alert('Applied', `Auto-filled ${updates.length} item quantities from room measurements.`);
+      } else {
+        Alert.alert('No Changes', 'No items to auto-fill from measurements.');
+      }
+    },
+    [items, onUpdateItem]
+  );
+
   const renderItem = (item: Item) => {
     const sc = STATUS_COLOR[item.status];
     const isNoteExpanded = expandedNotes[item.id] ?? false;
+    const showReference = hasReferenceCard(item.scope_item_id);
 
     return (
       <View key={item.id} style={[styles.itemRow, { borderLeftColor: sc }]}>
         <View style={styles.itemMain}>
-          <Text style={[styles.itemLabel, item.status === 'not_needed' && styles.strikethrough]}>
-            {item.label}
-            {item.mandatory ? ' *' : ''}
-          </Text>
+          <View style={styles.itemLabelRow}>
+            <Text style={[styles.itemLabel, item.status === 'not_needed' && styles.strikethrough]}>
+              {item.label}
+              {item.mandatory ? ' *' : ''}
+            </Text>
+            {item.require_photo && (
+              <Text style={styles.photoRequired}>{'\uD83D\uDCF7'}</Text>
+            )}
+            {showReference && (
+              <TouchableOpacity
+                style={styles.infoBtn}
+                onPress={() => setIicrcItem(item.scope_item_id)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.infoBtnText}>{'\u2139'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <View style={styles.statusBtns}>
             {STATUS_CYCLE.map((s) => (
               <TouchableOpacity
@@ -153,7 +245,10 @@ export function RoomSection({
                 ]}
                 onPress={() => {
                   if (item.status !== s) {
-                    onUpdateItem(item.id, { status: s }).catch(() => {});
+                    // Direct set for explicit button press
+                    let target = s;
+                    if (item.mandatory && target === 'not_needed') return;
+                    onUpdateItem(item.id, { status: target }).catch(() => {});
                   }
                 }}
                 activeOpacity={0.7}
@@ -171,7 +266,18 @@ export function RoomSection({
           </View>
         </View>
 
-        {/* Notes toggle + photo button */}
+        {/* Input type field (qty/pct/lf/sf/drop) */}
+        <InputTypeField
+          inputType={item.input_type}
+          dropOptions={item.drop_options}
+          qtyValue={item.qty_value}
+          dropValue={item.drop_value}
+          status={item.status}
+          onChangeQty={(v) => onUpdateItem(item.id, { qty_value: v }).catch(() => {})}
+          onChangeDrop={(v) => onUpdateItem(item.id, { drop_value: v }).catch(() => {})}
+        />
+
+        {/* Notes toggle + photo indicator */}
         <View style={styles.itemActions}>
           <TouchableOpacity
             onPress={() => setExpandedNotes((p) => ({ ...p, [item.id]: !p[item.id] }))}
@@ -182,6 +288,9 @@ export function RoomSection({
               {item.note ? ' \uD83D\uDCDD' : ''}
             </Text>
           </TouchableOpacity>
+          {item.require_photo && item.status === 'done' && (
+            <Text style={styles.photoReminder}>{'\uD83D\uDCF7'} Photo needed</Text>
+          )}
         </View>
 
         {/* Expanded note */}
@@ -299,6 +408,13 @@ export function RoomSection({
             </TouchableOpacity>
           </View>
 
+          {/* Measurements Panel */}
+          <MeasurementsPanel
+            measurements={room.measurements as RoomMeasurements | null}
+            onUpdate={handleMeasurementsUpdate}
+            onApply={handleApplyMeasurements}
+          />
+
           {Object.entries(groups).map(([sub, subItems]) =>
             renderSubsection(sub, subItems)
           )}
@@ -354,6 +470,13 @@ export function RoomSection({
           )}
         </View>
       )}
+
+      {/* IICRC Reference Popup */}
+      <IICRCPopup
+        visible={iicrcItem !== null}
+        itemId={iicrcItem ?? ''}
+        onClose={() => setIicrcItem(null)}
+      />
     </View>
   );
 }
@@ -490,16 +613,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  itemLabelRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   itemLabel: {
     fontSize: 13,
     fontWeight: '500',
     color: TEXT_SECONDARY,
-    flex: 1,
     lineHeight: 18,
+    flex: 1,
   },
   strikethrough: {
     textDecorationLine: 'line-through',
     color: TEXT_MUTED,
+  },
+  photoRequired: {
+    fontSize: 12,
+  },
+  infoBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: PDQ_BLUE + '30',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: PDQ_BLUE,
   },
   statusBtns: {
     flexDirection: 'row',
@@ -530,6 +675,11 @@ const styles = StyleSheet.create({
     color: TEXT_DIM,
     fontSize: 11,
     fontWeight: '500',
+  },
+  photoReminder: {
+    fontSize: 10,
+    color: PDQ_ORANGE,
+    fontWeight: '600',
   },
   noteInput: {
     backgroundColor: BG_CARD,

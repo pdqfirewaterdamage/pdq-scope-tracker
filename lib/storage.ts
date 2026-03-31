@@ -35,6 +35,15 @@ export interface Sheet {
   submitted_at: string | null;
   created_at: string;
   date: string;
+  weekend_sheet: boolean;
+}
+
+export interface RoomMeasurements {
+  l: string;
+  w: string;
+  h: string;
+  l2: string;
+  w2: string;
 }
 
 export interface Room {
@@ -45,6 +54,7 @@ export interface Room {
   walls_data: Record<string, unknown> | null;
   ceiling_data: Record<string, unknown> | null;
   flooring_data: Record<string, unknown> | null;
+  measurements: RoomMeasurements | null;
   created_at: string;
 }
 
@@ -61,11 +71,14 @@ export interface Item {
   no_hours: boolean;
   mandatory: boolean;
   has_note: boolean | null;
+  require_photo: boolean;
   sort_order: number;
   status: 'pending' | 'done' | 'not_needed';
   hours: number | null;
   hours_type: 'regular' | 'after';
   note: string | null;
+  qty_value: string | null;
+  drop_value: string | null;
   created_at: string;
 }
 
@@ -81,7 +94,7 @@ export interface Photo {
 }
 
 export type CreateProjectData = Omit<Project, 'id' | 'created_at' | 'updated_at' | 'created_by'>;
-export type CreateSheetData = Omit<Sheet, 'id' | 'created_at' | 'submitted' | 'submitted_at'>;
+export type CreateSheetData = Omit<Sheet, 'id' | 'created_at' | 'submitted' | 'submitted_at' | 'weekend_sheet'> & { weekend_sheet?: boolean };
 export type CreateRoomData = Omit<Room, 'id' | 'created_at'>;
 export type CreateItemData = Omit<Item, 'id' | 'created_at'>;
 
@@ -241,6 +254,82 @@ export async function updateItem(id: string, data: Partial<Item>): Promise<Item>
     .single();
   if (error) throw error;
   return item as Item;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+export function isWeekend(dateStr: string): boolean {
+  const d = new Date(dateStr + 'T12:00:00');
+  const day = d.getDay();
+  return day === 0 || day === 6;
+}
+
+export async function createSheetWithCarryForward(
+  projectId: string,
+  date: string,
+  techName: string | null,
+  waterCategory: 'cat2' | 'cat3' | null,
+): Promise<Sheet> {
+  const weekend = isWeekend(date);
+
+  const sheet = await createSheet({
+    project_id: projectId,
+    tech_name: techName,
+    hours_type: weekend ? 'after' : 'regular',
+    contents_status: null,
+    contents_boxes: null,
+    contents_hours: null,
+    date,
+    weekend_sheet: weekend,
+  });
+
+  // Carry forward rooms from the most recent previous sheet
+  const previousSheets = await getSheets(projectId);
+  const prevSheet = previousSheets.find((s) => s.id !== sheet.id);
+
+  if (prevSheet) {
+    const prevRooms = await getRooms(prevSheet.id);
+    for (const prevRoom of prevRooms) {
+      const newRoom = await createRoom({
+        sheet_id: sheet.id,
+        name: prevRoom.name,
+        sort_order: prevRoom.sort_order,
+        walls_data: prevRoom.walls_data,
+        ceiling_data: prevRoom.ceiling_data,
+        flooring_data: prevRoom.flooring_data,
+        measurements: prevRoom.measurements,
+      });
+
+      // Get previous items and reset to pending
+      const prevItems = await getItems(prevRoom.id);
+      if (prevItems.length > 0) {
+        const newItems = prevItems.map((item) => ({
+          room_id: newRoom.id,
+          scope_item_id: item.scope_item_id,
+          label: item.label,
+          phase: item.phase,
+          subsection: item.subsection,
+          child_sub: item.child_sub,
+          input_type: item.input_type,
+          drop_options: item.drop_options,
+          no_hours: item.no_hours,
+          mandatory: item.mandatory,
+          has_note: item.has_note,
+          require_photo: item.require_photo,
+          sort_order: item.sort_order,
+          status: 'pending' as const,
+          hours: null,
+          hours_type: weekend ? 'after' as const : 'regular' as const,
+          note: null,
+          qty_value: item.no_hours ? item.qty_value : null, // Preserve equipment quantities
+          drop_value: null,
+        }));
+        await createItems(newItems);
+      }
+    }
+  }
+
+  return sheet;
 }
 
 // ─── Realtime ─────────────────────────────────────────────────────────────────
