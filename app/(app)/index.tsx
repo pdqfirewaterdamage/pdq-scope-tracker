@@ -41,7 +41,7 @@ const APP_TILES: AppTile[] = [
     label: 'Scope Tracker',
     icon: '\uD83D\uDCCB',
     color: PDQ_NAVY,
-    route: '/(app)/scope',
+    route: '/(app)/scope/login',
     enabled: true,
   },
   {

@@ -34,6 +34,14 @@ export default function AppLayout() {
         options={{ headerShown: false, headerRight: undefined }}
       />
       <Stack.Screen
+        name="scope/login"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="scope/kpi"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="scope/index"
         options={{ title: 'Scope Tracker' }}
       />
