@@ -69,6 +69,10 @@ export default function AppLayout() {
         name="scope/whats-new"
         options={{ title: "What's New" }}
       />
+      <Stack.Screen
+        name="scope/playbook"
+        options={{ title: 'Playbook — Admin', headerShown: false }}
+      />
     </Stack>
   );
 }

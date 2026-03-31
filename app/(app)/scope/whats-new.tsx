@@ -18,6 +18,16 @@ interface Release {
 
 const CHANGELOG: Release[] = [
   {
+    version: 'v1.6',
+    date: 'March 31, 2026',
+    items: [
+      'Playbook admin panel (enter code "AD" on login screen)',
+      'Techs tab: view, edit, add, and delete technicians with KPI stats',
+      'Rooms tab: toggle room presets on/off, reorder with arrows, add custom rooms',
+      'Placeholder tabs for Phases, Prices, and Contest (coming soon)',
+    ],
+  },
+  {
     version: 'v1.5',
     date: 'March 31, 2026',
     items: [

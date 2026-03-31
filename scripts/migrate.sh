@@ -30,7 +30,7 @@ for migration in $(ls "$MIGRATIONS_DIR"/*.sql 2>/dev/null | sort); do
   echo "  [run]  $basename"
   sql=$(cat "$migration")
 
-  npx supabase db query --linked "$sql" > /dev/null 2>&1
+  npx supabase db query --linked -f "$migration" > /dev/null 2>&1
 
   if [ $? -eq 0 ]; then
     echo "$basename" >> "$TRACKING_FILE"

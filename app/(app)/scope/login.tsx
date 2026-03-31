@@ -26,6 +26,10 @@ export default function TechLoginScreen() {
 
   const tryLogin = () => {
     const code = input.trim().toUpperCase();
+    if (code === 'AD') {
+      router.push('/(app)/scope/playbook');
+      return;
+    }
     const tech = TECHS.find((t) => t.code === code);
     if (tech) {
       router.push({ pathname: '/(app)/scope/kpi', params: { techId: tech.id } });

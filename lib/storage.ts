@@ -362,6 +362,70 @@ export function subscribeToSheet(
   };
 }
 
+// ─── Playbook ────────────────────────────────────────────────────────────────
+
+export interface PlaybookSetting {
+  id: string;
+  key: string;
+  value: unknown;
+  updated_at: string;
+}
+
+export interface TechRecord {
+  id: string;
+  name: string;
+  code: string;
+  closing_ratio: number;
+  avg_job_size: number;
+  active: boolean;
+  created_at: string;
+}
+
+export async function getPlaybookSetting(key: string): Promise<unknown | null> {
+  const { data, error } = await supabase
+    .from('playbook')
+    .select('value')
+    .eq('key', key)
+    .single();
+  if (error) return null;
+  return data?.value ?? null;
+}
+
+export async function setPlaybookSetting(key: string, value: unknown): Promise<void> {
+  const { error } = await supabase
+    .from('playbook')
+    .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (error) throw error;
+}
+
+export async function getTechs(): Promise<TechRecord[]> {
+  const { data, error } = await supabase
+    .from('techs')
+    .select('*')
+    .eq('active', true)
+    .order('closing_ratio', { ascending: false });
+  if (error) throw error;
+  return data as TechRecord[];
+}
+
+export async function upsertTech(tech: Omit<TechRecord, 'id' | 'created_at'>): Promise<TechRecord> {
+  const { data, error } = await supabase
+    .from('techs')
+    .upsert(tech, { onConflict: 'code' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as TechRecord;
+}
+
+export async function deleteTech(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('techs')
+    .update({ active: false })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 // ─── Photos ───────────────────────────────────────────────────────────────────
 
 export async function getPhotos(itemId: string): Promise<Photo[]> {
