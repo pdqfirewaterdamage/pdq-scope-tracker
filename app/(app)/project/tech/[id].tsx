@@ -31,6 +31,7 @@ import {
   PDQ_ORANGE,
   PDQ_RED,
   PDQ_GREEN,
+  PDQ_AMBER,
   PDQ_GRAY,
 } from '../../../../constants/colors';
 import { Item, Room } from '../../../../lib/storage';
@@ -52,6 +53,15 @@ export default function TechSheetScreen() {
   const [customRoomName, setCustomRoomName] = useState('');
   const [addingRoom, setAddingRoom] = useState(false);
 
+  // Additional techs state
+  const [additionalTechsAnswered, setAdditionalTechsAnswered] = useState(false);
+  const [additionalTechsYes, setAdditionalTechsYes] = useState(false);
+  const [additionalTechsText, setAdditionalTechsText] = useState('');
+
+  // General — Daily section state
+  const [generalCollapsed, setGeneralCollapsed] = useState(false);
+  const [dailyNotes, setDailyNotes] = useState('');
+
   // Stats
   const allItems = rooms.flatMap((r) => r.items as Item[]);
   const doneCount = allItems.filter((i) => i.status === 'done').length;
@@ -60,13 +70,61 @@ export default function TechSheetScreen() {
   const totalCount = allItems.length;
   const progressPct = totalCount > 0 ? ((doneCount + naCount) / totalCount) * 100 : 0;
 
+  // General — Daily items (from rooms with phase === 'general' in the General / Daily subsection)
+  const generalItems: Item[] = allItems.filter(
+    (i) => i.phase === 'general' && i.subsection === 'General / Daily'
+  );
+  const generalPendingCount = generalItems.filter((i) => i.status === 'pending').length;
+  const generalAllDone = generalItems.length > 0 && generalPendingCount === 0;
+
+  // Featured general daily items for the dedicated card
+  const GENERAL_DAILY_FEATURED = ['gen_ppe', 'gen_moisture_am', 'gen_eod_check'];
+  const featuredGeneralItems = generalItems.filter((i) =>
+    GENERAL_DAILY_FEATURED.includes(i.scope_item_id) ||
+    i.scope_item_id === 'gen_ppe' ||
+    i.label.toLowerCase().includes('moisture') ||
+    i.label.toLowerCase().includes('clean up')
+  );
+  // Use all general items if we don't have specific featured ones
+  const displayGeneralItems = featuredGeneralItems.length > 0 ? generalItems : [];
+
+  // Submit button logic
+  const hasRooms = rooms.length > 0;
+  const nonGeneralRooms = rooms.filter((r) =>
+    (r.items as Item[]).some((i) => i.phase !== 'general')
+  );
+  const canSubmit = additionalTechsAnswered && (
+    (hasRooms && pendingCount === 0) ||
+    (!hasRooms && generalAllDone) ||
+    (generalAllDone && nonGeneralRooms.length === 0)
+  );
+  const getSubmitText = () => {
+    if (hasRooms && allItems.length > 0) return "Submit Today's Scope Sheet";
+    if (!hasRooms && generalAllDone) return 'Submit (General Only)';
+    return "Submit Today's Scope Sheet";
+  };
+  const getSubmitHint = () => {
+    if (!additionalTechsAnswered) return 'Answer "Additional Techs on Site?" to unlock';
+    if (!hasRooms && !generalAllDone) return 'Complete General \u2014 Daily or add a room to unlock';
+    return null;
+  };
+
   useEffect(() => {
     if (sheet?.project_id) {
       getProject(sheet.project_id).then(setProject).catch(() => null);
       if (sheet.tech_name) setTechName(sheet.tech_name);
       if (sheet.hours_type) setHoursType(sheet.hours_type);
+      if (sheet.additional_techs_answered) {
+        setAdditionalTechsAnswered(true);
+        if (sheet.additional_techs && sheet.additional_techs.length > 0) {
+          setAdditionalTechsYes(true);
+          setAdditionalTechsText(sheet.additional_techs.join(', '));
+        } else {
+          setAdditionalTechsYes(false);
+        }
+      }
     }
-  }, [sheet?.project_id, sheet?.tech_name, sheet?.hours_type]);
+  }, [sheet?.project_id, sheet?.tech_name, sheet?.hours_type, sheet?.additional_techs_answered]);
 
   const isCat3 = project?.water_category === 'cat3';
 
@@ -90,6 +148,47 @@ export default function TechSheetScreen() {
       console.error('Failed to save hours type', e);
     }
   }, [sheet]);
+
+  // Save additional techs answer
+  const saveAdditionalTechs = useCallback(async (answered: boolean, yes: boolean, text: string) => {
+    if (!sheet) return;
+    const techs = yes ? text.split(',').map((t) => t.trim()).filter(Boolean) : null;
+    try {
+      await updateSheet(sheet.id, {
+        additional_techs_answered: answered,
+        additional_techs: techs,
+      });
+    } catch (e) {
+      console.error('Failed to save additional techs', e);
+    }
+  }, [sheet]);
+
+  const handleAdditionalTechsYes = useCallback(() => {
+    setAdditionalTechsAnswered(true);
+    setAdditionalTechsYes(true);
+    saveAdditionalTechs(true, true, additionalTechsText);
+  }, [saveAdditionalTechs, additionalTechsText]);
+
+  const handleAdditionalTechsNo = useCallback(() => {
+    setAdditionalTechsAnswered(true);
+    setAdditionalTechsYes(false);
+    setAdditionalTechsText('');
+    saveAdditionalTechs(true, false, '');
+  }, [saveAdditionalTechs]);
+
+  const handleAdditionalTechsTextBlur = useCallback(() => {
+    if (additionalTechsAnswered && additionalTechsYes) {
+      saveAdditionalTechs(true, true, additionalTechsText);
+    }
+  }, [additionalTechsAnswered, additionalTechsYes, additionalTechsText, saveAdditionalTechs]);
+
+  // Toggle general item status
+  const handleGeneralItemToggle = useCallback(async (item: Item) => {
+    const nextStatus = item.status === 'pending' ? 'done'
+      : item.status === 'done' ? 'not_needed'
+      : 'pending';
+    await updateItem(item.id, { status: nextStatus });
+  }, [updateItem]);
 
   const handleAddRoom = useCallback(
     async (roomName: string) => {
@@ -153,6 +252,11 @@ export default function TechSheetScreen() {
       return;
     }
     setTechNameError(false);
+
+    if (!additionalTechsAnswered) {
+      Alert.alert('Required', 'Please answer "Additional Techs on Site?" before submitting.');
+      return;
+    }
 
     const allRoomItems: RoomItem[] = rooms.flatMap((r) =>
       (r.items as Item[]).map((i) => ({
@@ -295,6 +399,57 @@ export default function TechSheetScreen() {
             placeholderTextColor={TEXT_DIM}
           />
 
+          {/* Additional Techs on Site */}
+          <View style={styles.additionalTechsRow}>
+            <View style={styles.additionalTechsLabel}>
+              <Text style={styles.additionalTechsLabelText}>Additional Techs on Site?</Text>
+              {!additionalTechsAnswered && (
+                <View style={styles.mustAnswerBadge}>
+                  <Text style={styles.mustAnswerText}>{'\u26A0'} MUST ANSWER</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.additionalTechsBtns}>
+              <TouchableOpacity
+                style={[
+                  styles.additionalTechBtn,
+                  additionalTechsAnswered && additionalTechsYes && styles.additionalTechBtnActive,
+                ]}
+                onPress={handleAdditionalTechsYes}
+              >
+                <Text style={[
+                  styles.additionalTechBtnText,
+                  additionalTechsAnswered && additionalTechsYes && styles.additionalTechBtnTextActive,
+                ]}>Yes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.additionalTechBtn,
+                  additionalTechsAnswered && !additionalTechsYes && styles.additionalTechBtnActive,
+                ]}
+                onPress={handleAdditionalTechsNo}
+              >
+                <Text style={[
+                  styles.additionalTechBtnText,
+                  additionalTechsAnswered && !additionalTechsYes && styles.additionalTechBtnTextActive,
+                ]}>No</Text>
+              </TouchableOpacity>
+            </View>
+            {additionalTechsAnswered && additionalTechsYes && (
+              <TextInput
+                style={[styles.input, { marginTop: 8, marginBottom: 0 }]}
+                value={additionalTechsText}
+                onChangeText={setAdditionalTechsText}
+                onBlur={handleAdditionalTechsTextBlur}
+                placeholder="Additional tech names (comma separated)"
+                placeholderTextColor={TEXT_DIM}
+              />
+            )}
+            {additionalTechsAnswered && !additionalTechsYes && (
+              <Text style={styles.onlyLeadText}>{'\u2713'} Only lead tech on site today</Text>
+            )}
+          </View>
+
           <View style={styles.statsRow}>
             <Text style={{ color: PDQ_GREEN, fontWeight: '600', fontSize: 13 }}>
               {'\u2713'} {doneCount}
@@ -333,6 +488,92 @@ export default function TechSheetScreen() {
             ))}
           </View>
         </View>
+
+        {/* General — Daily Section */}
+        {generalItems.length > 0 && (
+          <View style={styles.generalCard}>
+            <TouchableOpacity
+              style={styles.generalHeader}
+              onPress={() => setGeneralCollapsed(!generalCollapsed)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.generalHeaderText}>General {'\u2014'} Daily</Text>
+              <View style={styles.generalBadgeRow}>
+                {generalPendingCount > 0 && (
+                  <View style={styles.generalPendingBadge}>
+                    <Text style={styles.generalPendingText}>
+                      {'\u25CB'} {generalPendingCount} left
+                    </Text>
+                  </View>
+                )}
+                {generalAllDone && (
+                  <View style={styles.generalDoneBadge}>
+                    <Text style={styles.generalDoneText}>{'\u2713'} Done</Text>
+                  </View>
+                )}
+                <Text style={styles.collapseArrow}>{generalCollapsed ? '\u25B8' : '\u25BE'}</Text>
+              </View>
+            </TouchableOpacity>
+
+            {!generalCollapsed && (
+              <View style={styles.generalBody}>
+                {generalItems.map((item) => (
+                  <View key={item.id} style={styles.generalItemRow}>
+                    <TouchableOpacity
+                      style={[
+                        styles.generalStatusBtn,
+                        item.status === 'done' && styles.generalStatusDone,
+                        item.status === 'not_needed' && styles.generalStatusNa,
+                      ]}
+                      onPress={() => handleGeneralItemToggle(item)}
+                    >
+                      <Text style={styles.generalStatusText}>
+                        {item.status === 'pending' ? '\u25CB' : item.status === 'done' ? '\u2713' : '\u2014'}
+                      </Text>
+                    </TouchableOpacity>
+                    <View style={styles.generalItemInfo}>
+                      <Text style={[
+                        styles.generalItemLabel,
+                        item.status === 'not_needed' && styles.generalItemStrikethrough,
+                      ]}>
+                        {item.label}
+                      </Text>
+                      <View style={styles.generalItemBadges}>
+                        {item.no_hours && (
+                          <Text style={styles.noHoursLabel}>no hrs</Text>
+                        )}
+                        {item.require_photo && (
+                          <Text style={styles.photoBadge}>{'\uD83D\uDCF7'}</Text>
+                        )}
+                        {item.input_type === 'qty' && (
+                          <TextInput
+                            style={styles.generalQtyInput}
+                            value={item.qty_value ?? ''}
+                            onChangeText={(v) => updateItem(item.id, { qty_value: v })}
+                            placeholder="qty"
+                            placeholderTextColor={TEXT_DIM}
+                            keyboardType="numeric"
+                          />
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                ))}
+
+                {/* Daily Notes */}
+                <TextInput
+                  style={[styles.input, { marginTop: 12 }]}
+                  value={dailyNotes}
+                  onChangeText={setDailyNotes}
+                  placeholder="Daily Notes..."
+                  placeholderTextColor={TEXT_DIM}
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Rooms */}
         {rooms.map((room) => (
@@ -398,8 +639,11 @@ export default function TechSheetScreen() {
         />
 
         {/* Submit */}
+        {getSubmitHint() && (
+          <Text style={styles.submitHint}>{getSubmitHint()}</Text>
+        )}
         <TouchableOpacity
-          style={styles.submitBtn}
+          style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
           onPress={handleSubmit}
           disabled={submitting}
           activeOpacity={0.8}
@@ -407,7 +651,7 @@ export default function TechSheetScreen() {
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.submitBtnText}>Submit Today's Scope Sheet</Text>
+            <Text style={styles.submitBtnText}>{getSubmitText()}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -662,10 +906,204 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
+  submitBtnDisabled: {
+    opacity: 0.5,
+  },
   submitBtnText: {
     color: '#fff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  submitHint: {
+    color: PDQ_AMBER,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  // Additional Techs
+  additionalTechsRow: {
+    marginBottom: 10,
+  },
+  additionalTechsLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  additionalTechsLabelText: {
+    color: TEXT_PRIMARY,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  mustAnswerBadge: {
+    backgroundColor: '#f59e0b1a',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  mustAnswerText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: PDQ_AMBER,
+  },
+  additionalTechsBtns: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  additionalTechBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    backgroundColor: BG_INPUT,
+  },
+  additionalTechBtnActive: {
+    backgroundColor: PDQ_ORANGE,
+    borderColor: PDQ_ORANGE,
+  },
+  additionalTechBtnText: {
+    color: TEXT_SECONDARY,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  additionalTechBtnTextActive: {
+    color: '#fff',
+  },
+  onlyLeadText: {
+    color: PDQ_GREEN,
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  // General — Daily
+  generalCard: {
+    backgroundColor: BG_CARD,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    overflow: 'hidden',
+  },
+  generalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+  },
+  generalHeaderText: {
+    fontWeight: '700',
+    fontSize: 15,
+    color: TEXT_PRIMARY,
+  },
+  generalBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  generalPendingBadge: {
+    backgroundColor: '#f59e0b1a',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  generalPendingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: PDQ_AMBER,
+  },
+  generalDoneBadge: {
+    backgroundColor: '#22c55e1a',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  generalDoneText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: PDQ_GREEN,
+  },
+  collapseArrow: {
+    color: TEXT_MUTED,
+    fontSize: 14,
+  },
+  generalBody: {
+    padding: 14,
+  },
+  generalItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+  },
+  generalStatusBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: BG_INPUT,
+  },
+  generalStatusDone: {
+    backgroundColor: PDQ_GREEN,
+    borderColor: PDQ_GREEN,
+  },
+  generalStatusNa: {
+    backgroundColor: '#f59e0b33',
+    borderColor: PDQ_AMBER,
+  },
+  generalStatusText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  generalItemInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  generalItemLabel: {
+    color: TEXT_SECONDARY,
+    fontSize: 14,
+    flex: 1,
+  },
+  generalItemStrikethrough: {
+    textDecorationLine: 'line-through',
+    color: TEXT_DIM,
+  },
+  generalItemBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  noHoursLabel: {
+    fontSize: 10,
+    color: TEXT_DIM,
+    fontStyle: 'italic',
+  },
+  photoBadge: {
+    fontSize: 14,
+  },
+  generalQtyInput: {
+    width: 50,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    fontSize: 13,
+    color: TEXT_SECONDARY,
+    backgroundColor: BG_INPUT,
+    textAlign: 'center',
   },
   // Room Picker
   pickerContainer: {

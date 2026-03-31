@@ -11,9 +11,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getProjects, createProject, Project } from '../../../lib/storage';
+import { getProjects, createProject, updateProject, getSheets, Project } from '../../../lib/storage';
+import { buildCompleteReportHTML } from '../../../lib/templates';
 import { ProjectCard } from '../../../components/cards/ProjectCard';
 import { Button } from '../../../components/ui/Button';
 import {
@@ -175,6 +177,53 @@ export default function HomeScreen() {
             <ProjectCard
               project={item}
               onPress={() => router.push(`/(app)/project/${item.id}`)}
+              onEstimatorReview={item.status === 'active' ? () => {
+                // Navigate to first submitted sheet's estimator view, or project detail
+                getSheets(item.id).then((sheets) => {
+                  const submitted = sheets.find((s) => s.submitted);
+                  if (submitted) {
+                    router.push(`/(app)/project/estimator/${submitted.id}`);
+                  } else if (sheets.length > 0) {
+                    router.push(`/(app)/project/estimator/${sheets[0].id}`);
+                  } else {
+                    Alert.alert('No Sheets', 'Create a sheet first before reviewing.');
+                  }
+                }).catch(() => Alert.alert('Error', 'Failed to load sheets.'));
+              } : undefined}
+              onMarkComplete={item.status === 'active' ? () => {
+                Alert.alert(
+                  'Mark Complete',
+                  `Mark "${item.job_name}" as complete?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Complete',
+                      onPress: async () => {
+                        try {
+                          await updateProject(item.id, { status: 'complete' });
+                          fetchProjects();
+                        } catch (err) {
+                          Alert.alert('Error', 'Failed to mark project complete.');
+                        }
+                      },
+                    },
+                  ]
+                );
+              } : undefined}
+              onViewReport={item.status === 'complete' ? () => {
+                getSheets(item.id).then(async (sheets) => {
+                  if (sheets.length === 0) {
+                    Alert.alert('No Sheets', 'No sheets found for this project.');
+                    return;
+                  }
+                  const submitted = sheets.find((s) => s.submitted);
+                  if (submitted) {
+                    router.push(`/(app)/project/estimator/${submitted.id}`);
+                  } else {
+                    router.push(`/(app)/project/estimator/${sheets[0].id}`);
+                  }
+                }).catch(() => Alert.alert('Error', 'Failed to load sheets.'));
+              } : undefined}
             />
           </View>
         )}

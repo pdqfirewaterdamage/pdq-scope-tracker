@@ -36,6 +36,8 @@ export interface Sheet {
   created_at: string;
   date: string;
   weekend_sheet: boolean;
+  additional_techs: string[] | null;
+  additional_techs_answered: boolean;
 }
 
 export interface RoomMeasurements {
@@ -94,7 +96,7 @@ export interface Photo {
 }
 
 export type CreateProjectData = Omit<Project, 'id' | 'created_at' | 'updated_at' | 'created_by'>;
-export type CreateSheetData = Omit<Sheet, 'id' | 'created_at' | 'submitted' | 'submitted_at' | 'weekend_sheet'> & { weekend_sheet?: boolean };
+export type CreateSheetData = Omit<Sheet, 'id' | 'created_at' | 'submitted' | 'submitted_at' | 'weekend_sheet' | 'additional_techs_answered'> & { weekend_sheet?: boolean };
 export type CreateRoomData = Omit<Room, 'id' | 'created_at'>;
 export type CreateItemData = Omit<Item, 'id' | 'created_at'>;
 
@@ -281,6 +283,7 @@ export async function createSheetWithCarryForward(
     contents_hours: null,
     date,
     weekend_sheet: weekend,
+    additional_techs: null,
   });
 
   // Carry forward rooms from the most recent previous sheet
