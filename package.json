@@ -7,7 +7,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "deploy": "npx expo export -p web && wrangler deploy",
+    "db:migrate": "bash scripts/migrate.sh",
+    "db:query": "npx supabase db query --linked",
+    "deploy": "npm run db:migrate && npx expo export -p web && wrangler deploy",
     "preview": "npx expo export -p web && wrangler dev"
   },
   "dependencies": {

@@ -15,6 +15,10 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# supabase local state
+supabase/.temp
+supabase/.applied_migrations
+
 # wrangler files
 .wrangler
 .dev.vars*
