@@ -114,6 +114,98 @@ export default function HomeScreen() {
     }
   }
 
+  // ─── Export Backup ───────────────────────────────────────────────────────────
+  const handleExportBackup = useCallback(async () => {
+    try {
+      const allProjects = await getProjects();
+      const projectsWithSheets = [];
+      for (const proj of allProjects) {
+        const sheets = await getSheets(proj.id);
+        projectsWithSheets.push({ ...proj, sheets });
+      }
+      const backup = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        projects: projectsWithSheets,
+      };
+      const jsonStr = JSON.stringify(backup, null, 2);
+
+      if (Platform.OS === 'web') {
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateStr = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `PDQ_backup_${dateStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      Alert.alert('Export Complete', `Exported ${allProjects.length} project(s) to backup file.`);
+    } catch (err: unknown) {
+      Alert.alert('Export Error', err instanceof Error ? err.message : 'Failed to export backup.');
+    }
+  }, []);
+
+  // ─── Import Backup ───────────────────────────────────────────────────────────
+  const handleImportBackup = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.style.display = 'none';
+      input.onchange = async (e: any) => {
+        const file = e.target?.files?.[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const backup = JSON.parse(text);
+          if (!backup.projects || !Array.isArray(backup.projects)) {
+            Alert.alert('Invalid File', 'This file does not contain a valid PDQ backup.');
+            return;
+          }
+          let projectCount = 0;
+          let sheetCount = 0;
+          const existingProjects = await getProjects();
+          const existingIds = new Set(existingProjects.map((p) => p.id));
+
+          for (const proj of backup.projects) {
+            if (existingIds.has(proj.id)) {
+              // Skip existing projects
+              continue;
+            }
+            const { sheets: projSheets, ...projectData } = proj;
+            try {
+              await createProject({
+                job_name: projectData.job_name,
+                address: projectData.address,
+                job_type: projectData.job_type,
+                water_category: projectData.water_category,
+                status: projectData.status,
+              });
+              projectCount++;
+            } catch {
+              // Skip projects that fail to create
+              continue;
+            }
+          }
+
+          await fetchProjects();
+          Alert.alert('Import Complete', `Imported ${projectCount} new project(s).`);
+        } catch (err: unknown) {
+          Alert.alert('Import Error', err instanceof Error ? err.message : 'Failed to parse backup file.');
+        }
+      };
+      document.body.appendChild(input);
+      input.click();
+      document.body.removeChild(input);
+    } else {
+      Alert.alert('Not Supported', 'Import is currently only supported on web.');
+    }
+  }, [fetchProjects]);
+
   const JOB_TYPES: JobType[] = ['Water Mitigation', 'Fire & Smoke', 'General'];
   const CATEGORIES: { label: string; value: WaterCategory }[] = [
     { label: 'Cat 2', value: 'cat2' },
@@ -141,6 +233,22 @@ export default function HomeScreen() {
           size="lg"
           onPress={() => setModalVisible(true)}
         />
+        <View style={styles.backupRow}>
+          <TouchableOpacity
+            style={styles.backupBtn}
+            onPress={handleExportBackup}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.backupBtnText}>{'\uD83D\uDCE4'} Export Backup</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.backupBtn}
+            onPress={handleImportBackup}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.backupBtnText}>{'\uD83D\uDCE5'} Import Backup</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -407,6 +515,25 @@ const styles = StyleSheet.create({
   },
   newProjectRow: {
     padding: 16,
+  },
+  backupRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  backupBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  backupBtnText: {
+    color: TEXT_MUTED,
+    fontWeight: '600',
+    fontSize: 13,
   },
   sectionLabel: {
     fontSize: 12,

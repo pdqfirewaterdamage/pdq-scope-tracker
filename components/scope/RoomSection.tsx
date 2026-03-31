@@ -11,6 +11,7 @@ import { Item, Room, RoomMeasurements } from '../../lib/storage';
 import { WallsCeilingUI } from './WallsCeilingUI';
 import { FlooringSection } from './FlooringSection';
 import { AsbestosSection } from './AsbestosSection';
+import { MoldSection } from './MoldSection';
 import { MeasurementsPanel } from './MeasurementsPanel';
 import { InputTypeField } from './InputTypeField';
 import { IICRCPopup, hasReferenceCard } from './IICRCPopup';
@@ -341,7 +342,7 @@ export function RoomSection({
     const sectionState = sectionYesNo[subsection];
     const isNA = sectionState === false;
 
-    if (subsection === 'Walls' || subsection === 'Ceiling' || subsection === 'Flooring' || subsection === 'Asbestos') {
+    if (subsection === 'Walls' || subsection === 'Ceiling' || subsection === 'Flooring' || subsection === 'Asbestos' || subsection === 'Mold') {
       return null;
     }
 
@@ -466,6 +467,21 @@ export function RoomSection({
               onUpdateItem={(id: string, status: ItemStatus) => {
                 onUpdateItem(id, { status }).catch(() => {});
               }}
+            />
+          )}
+
+          {groups['Mold'] && (
+            <MoldSection
+              moldRequired={sectionYesNo['Mold'] ?? null}
+              items={groups['Mold'].map((i) => ({
+                id: i.id,
+                label: i.label,
+                status: i.status,
+                hours: i.hours ?? undefined,
+                qty_value: i.qty_value ?? undefined,
+              }))}
+              onToggle={(required: boolean) => handleSectionToggle('Mold', required)}
+              onUpdateItem={(id: string, data: any) => onUpdateItem(id, data)}
             />
           )}
         </View>

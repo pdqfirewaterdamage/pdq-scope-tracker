@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -61,6 +61,11 @@ export default function TechSheetScreen() {
   // General — Daily section state
   const [generalCollapsed, setGeneralCollapsed] = useState(false);
   const [dailyNotes, setDailyNotes] = useState('');
+
+  // Scroll-to-pending refs
+  const scrollViewRef = useRef<ScrollView>(null);
+  const roomYPositions = useRef<Record<string, number>>({});
+  const generalYPosition = useRef<number>(0);
 
   // Stats
   const allItems = rooms.flatMap((r) => r.items as Item[]);
@@ -189,6 +194,30 @@ export default function TechSheetScreen() {
       : 'pending';
     await updateItem(item.id, { status: nextStatus });
   }, [updateItem]);
+
+  // Scroll to first room (or general section) with pending items
+  const handleScrollToPending = useCallback(() => {
+    // Check rooms for pending items
+    for (const room of rooms) {
+      const roomItems = room.items as Item[];
+      const hasPending = roomItems.some((i) => i.status === 'pending');
+      if (hasPending && roomYPositions.current[room.id] !== undefined) {
+        scrollViewRef.current?.scrollTo({
+          y: roomYPositions.current[room.id],
+          animated: true,
+        });
+        return;
+      }
+    }
+    // If no room pending, check general section
+    if (generalItems.some((i) => i.status === 'pending')) {
+      setGeneralCollapsed(false);
+      scrollViewRef.current?.scrollTo({
+        y: generalYPosition.current,
+        animated: true,
+      });
+    }
+  }, [rooms, generalItems]);
 
   const handleAddRoom = useCallback(
     async (roomName: string) => {
@@ -363,7 +392,7 @@ export default function TechSheetScreen() {
         </View>
       )}
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView ref={scrollViewRef} style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         {/* Project banner */}
         {project && (
           <View style={styles.banner}>
@@ -457,9 +486,11 @@ export default function TechSheetScreen() {
             <Text style={{ color: '#f59e0b', fontWeight: '600', fontSize: 13 }}>
               — {naCount} N/A
             </Text>
-            <Text style={{ color: TEXT_MUTED, fontWeight: '600', fontSize: 13 }}>
-              {'\u25CB'} {pendingCount} left
-            </Text>
+            <TouchableOpacity onPress={handleScrollToPending} activeOpacity={0.7}>
+              <Text style={{ color: pendingCount > 0 ? PDQ_AMBER : TEXT_MUTED, fontWeight: '600', fontSize: 13 }}>
+                {'\u25CB'} {pendingCount} left {pendingCount > 0 ? '\u25BE' : ''}
+              </Text>
+            </TouchableOpacity>
             <Text style={{ color: TEXT_DIM, fontSize: 13 }}>
               {rooms.length} room{rooms.length !== 1 ? 's' : ''}
             </Text>
@@ -491,7 +522,12 @@ export default function TechSheetScreen() {
 
         {/* General — Daily Section */}
         {generalItems.length > 0 && (
-          <View style={styles.generalCard}>
+          <View
+            style={styles.generalCard}
+            onLayout={(e) => {
+              generalYPosition.current = e.nativeEvent.layout.y;
+            }}
+          >
             <TouchableOpacity
               style={styles.generalHeader}
               onPress={() => setGeneralCollapsed(!generalCollapsed)}
@@ -577,8 +613,13 @@ export default function TechSheetScreen() {
 
         {/* Rooms */}
         {rooms.map((room) => (
-          <RoomSection
+          <View
             key={room.id}
+            onLayout={(e) => {
+              roomYPositions.current[room.id] = e.nativeEvent.layout.y;
+            }}
+          >
+          <RoomSection
             room={room}
             items={room.items as Item[]}
             waterCategory={isCat3 ? 'cat3' : 'cat2'}
@@ -606,6 +647,7 @@ export default function TechSheetScreen() {
               );
             }}
           />
+          </View>
         ))}
 
         {/* Add Room Button */}
