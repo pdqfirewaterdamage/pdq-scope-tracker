@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getProjects, createProject, updateProject, getSheets, Project } from '../../../lib/storage';
+import { getProjects, createProject, updateProject, getSheets, getRooms, getItems, Project } from '../../../lib/storage';
 import { buildCompleteReportHTML } from '../../../lib/templates';
 import { ProjectCard } from '../../../components/cards/ProjectCard';
 import { Button } from '../../../components/ui/Button';
@@ -212,6 +212,72 @@ export default function HomeScreen() {
     { label: 'Cat 3', value: 'cat3' },
   ];
 
+  // ─── Collect all rooms with items for a project ─────────────────────────────
+  const collectRoomsWithItems = useCallback(async (projectId: string) => {
+    const sheets = await getSheets(projectId);
+    const allRooms: any[] = [];
+    for (const sheet of sheets) {
+      const rooms = await getRooms(sheet.id);
+      for (const room of rooms) {
+        const items = await getItems(room.id);
+        allRooms.push({ ...room, items });
+      }
+    }
+    return { sheets, allRooms };
+  }, []);
+
+  // ─── Open HTML report in new browser tab ───────────────────────────────────
+  const openReportInBrowser = useCallback((html: string) => {
+    if (Platform.OS === 'web') {
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      // Revoke after a delay so the tab can load
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+  }, []);
+
+  // ─── Mark Complete handler ─────────────────────────────────────────────────
+  const handleMarkComplete = useCallback((project: Project) => {
+    Alert.alert(
+      'Mark Complete',
+      `Mark "${project.job_name}" as complete? This will generate the complete job package.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Complete',
+          onPress: async () => {
+            try {
+              await updateProject(project.id, { status: 'complete' });
+              const { sheets, allRooms } = await collectRoomsWithItems(project.id);
+              const html = buildCompleteReportHTML(project, sheets, allRooms);
+              openReportInBrowser(html);
+              await fetchProjects();
+              Alert.alert('Success', `"${project.job_name}" marked complete. Report generated.`);
+            } catch (err) {
+              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to mark project complete.');
+            }
+          },
+        },
+      ]
+    );
+  }, [collectRoomsWithItems, openReportInBrowser, fetchProjects]);
+
+  // ─── View Report handler ───────────────────────────────────────────────────
+  const handleViewReport = useCallback(async (project: Project) => {
+    try {
+      const { sheets, allRooms } = await collectRoomsWithItems(project.id);
+      if (sheets.length === 0) {
+        Alert.alert('No Sheets', 'No sheets found for this project.');
+        return;
+      }
+      const html = buildCompleteReportHTML(project, sheets, allRooms);
+      openReportInBrowser(html);
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to generate report.');
+    }
+  }, [collectRoomsWithItems, openReportInBrowser]);
+
   const activeProjects = projects.filter((p) => p.status === 'active');
   const completedProjects = projects.filter((p) => p.status === 'complete');
 
@@ -298,44 +364,22 @@ export default function HomeScreen() {
                   }
                 }).catch(() => Alert.alert('Error', 'Failed to load sheets.'));
               } : undefined}
-              onMarkComplete={item.status === 'active' ? () => {
-                Alert.alert(
-                  'Mark Complete',
-                  `Mark "${item.job_name}" as complete?`,
-                  [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Complete',
-                      onPress: async () => {
-                        try {
-                          await updateProject(item.id, { status: 'complete' });
-                          fetchProjects();
-                        } catch (err) {
-                          Alert.alert('Error', 'Failed to mark project complete.');
-                        }
-                      },
-                    },
-                  ]
-                );
-              } : undefined}
-              onViewReport={item.status === 'complete' ? () => {
-                getSheets(item.id).then(async (sheets) => {
-                  if (sheets.length === 0) {
-                    Alert.alert('No Sheets', 'No sheets found for this project.');
-                    return;
-                  }
-                  const submitted = sheets.find((s) => s.submitted);
-                  if (submitted) {
-                    router.push(`/(app)/project/estimator/${submitted.id}`);
-                  } else {
-                    router.push(`/(app)/project/estimator/${sheets[0].id}`);
-                  }
-                }).catch(() => Alert.alert('Error', 'Failed to load sheets.'));
-              } : undefined}
+              onMarkComplete={item.status === 'active' ? () => handleMarkComplete(item) : undefined}
+              onViewReport={item.status === 'complete' ? () => handleViewReport(item) : undefined}
             />
           </View>
         )}
       />
+
+      {/* Dev Links */}
+      <View style={styles.devLinksRow}>
+        <TouchableOpacity onPress={() => router.push('/(app)/scope/debug')} activeOpacity={0.7}>
+          <Text style={styles.devLinkText}>{'\uD83D\uDD27'} Debug</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/(app)/scope/whats-new')} activeOpacity={0.7}>
+          <Text style={styles.devLinkText}>What's New</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* New Project Modal */}
       <Modal
@@ -663,5 +707,17 @@ const styles = StyleSheet.create({
   createBtn: {
     marginTop: 20,
     marginBottom: 40,
+  },
+  devLinksRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    paddingVertical: 12,
+    paddingBottom: 20,
+  },
+  devLinkText: {
+    color: TEXT_DIM,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

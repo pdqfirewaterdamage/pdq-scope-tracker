@@ -632,6 +632,284 @@ export const SCOPE_TEMPLATE: ScopeSection[] = [
       },
     ],
   },
+
+  // ─── FIRE / SMOKE RESTORATION ──────────────────────────────────────────────
+  {
+    id: 'fire_containment',
+    label: 'Fire Containment',
+    phase: 'fire',
+    subsection: 'Fire Containment',
+    items: [
+      {
+        id: 'fire_boardup',
+        label: 'Board up / secure structure',
+        phase: 'fire',
+        subsection: 'Fire Containment',
+        sortOrder: 100,
+      },
+      {
+        id: 'fire_containment_smoke',
+        label: 'Set up containment for smoke areas',
+        phase: 'fire',
+        subsection: 'Fire Containment',
+        sortOrder: 101,
+      },
+    ],
+  },
+  {
+    id: 'fire_demolition',
+    label: 'Demolition',
+    phase: 'fire',
+    subsection: 'Demolition',
+    items: [
+      {
+        id: 'fire_remove_debris',
+        label: 'Remove debris / charred materials',
+        phase: 'fire',
+        subsection: 'Demolition',
+        sortOrder: 102,
+      },
+      {
+        id: 'fire_remove_insulation',
+        label: 'Remove smoke-damaged insulation',
+        phase: 'fire',
+        subsection: 'Demolition',
+        sortOrder: 103,
+      },
+    ],
+  },
+  {
+    id: 'fire_smoke_cleaning',
+    label: 'Smoke Cleaning',
+    phase: 'fire',
+    subsection: 'Smoke Cleaning',
+    items: [
+      {
+        id: 'fire_hepa_vacuum',
+        label: 'HEPA vacuum soot from surfaces',
+        phase: 'fire',
+        subsection: 'Smoke Cleaning',
+        sortOrder: 104,
+      },
+      {
+        id: 'fire_dry_sponge',
+        label: 'Dry sponge walls & ceilings',
+        phase: 'fire',
+        subsection: 'Smoke Cleaning',
+        sortOrder: 105,
+      },
+      {
+        id: 'fire_clean_contents',
+        label: 'Clean / deodorize affected contents',
+        phase: 'fire',
+        subsection: 'Smoke Cleaning',
+        sortOrder: 106,
+      },
+      {
+        id: 'fire_ozone_hydroxyl',
+        label: 'Ozone / hydroxyl treatment',
+        phase: 'fire',
+        subsection: 'Smoke Cleaning',
+        noHours: true,
+        inputType: 'qty',
+        sortOrder: 107,
+      },
+      {
+        id: 'fire_thermal_fogging',
+        label: 'Thermal fogging',
+        phase: 'fire',
+        subsection: 'Smoke Cleaning',
+        inputType: 'qty',
+        sortOrder: 108,
+      },
+      {
+        id: 'fire_seal_encapsulate',
+        label: 'Seal / encapsulate smoke-damaged surfaces',
+        phase: 'fire',
+        subsection: 'Smoke Cleaning',
+        sortOrder: 109,
+      },
+    ],
+  },
+  {
+    id: 'fire_documentation',
+    label: 'Documentation',
+    phase: 'fire',
+    subsection: 'Documentation',
+    items: [
+      {
+        id: 'fire_photo_doc',
+        label: 'Photo-document all affected areas',
+        phase: 'fire',
+        subsection: 'Documentation',
+        requirePhoto: true,
+        sortOrder: 110,
+      },
+    ],
+  },
+
+  // ─── RECONSTRUCTION ────────────────────────────────────────────────────────
+  {
+    id: 'recon_drywall',
+    label: 'Drywall',
+    phase: 'recon',
+    subsection: 'Drywall',
+    items: [
+      {
+        id: 'recon_hang_drywall',
+        label: 'Hang new drywall',
+        phase: 'recon',
+        subsection: 'Drywall',
+        inputType: 'sf',
+        sortOrder: 200,
+      },
+      {
+        id: 'recon_tape_mud',
+        label: 'Tape & mud drywall',
+        phase: 'recon',
+        subsection: 'Drywall',
+        inputType: 'sf',
+        sortOrder: 201,
+      },
+      {
+        id: 'recon_sand_prep',
+        label: 'Sand & prep drywall for paint',
+        phase: 'recon',
+        subsection: 'Drywall',
+        sortOrder: 202,
+      },
+    ],
+  },
+  {
+    id: 'recon_finishing',
+    label: 'Finishing',
+    phase: 'recon',
+    subsection: 'Finishing',
+    items: [
+      {
+        id: 'recon_prime',
+        label: 'Prime walls / ceilings',
+        phase: 'recon',
+        subsection: 'Finishing',
+        inputType: 'sf',
+        sortOrder: 203,
+      },
+      {
+        id: 'recon_paint',
+        label: 'Paint walls / ceilings',
+        phase: 'recon',
+        subsection: 'Finishing',
+        inputType: 'sf',
+        sortOrder: 204,
+      },
+      {
+        id: 'recon_baseboards',
+        label: 'Install new baseboards',
+        phase: 'recon',
+        subsection: 'Finishing',
+        inputType: 'lf',
+        sortOrder: 205,
+      },
+      {
+        id: 'recon_trim_casing',
+        label: 'Install trim / door casing',
+        phase: 'recon',
+        subsection: 'Finishing',
+        inputType: 'lf',
+        sortOrder: 206,
+      },
+      {
+        id: 'recon_cabinetry',
+        label: 'Install new cabinetry',
+        phase: 'recon',
+        subsection: 'Finishing',
+        sortOrder: 207,
+      },
+      {
+        id: 'recon_touchup_paint',
+        label: 'Touch-up paint',
+        phase: 'recon',
+        subsection: 'Finishing',
+        sortOrder: 208,
+      },
+    ],
+  },
+  {
+    id: 'recon_flooring',
+    label: 'Flooring',
+    phase: 'recon',
+    subsection: 'Flooring',
+    items: [
+      {
+        id: 'recon_flooring_general',
+        label: 'Install new flooring',
+        phase: 'recon',
+        subsection: 'Flooring',
+        inputType: 'sf',
+        sortOrder: 209,
+      },
+      {
+        id: 'recon_carpet_pad',
+        label: 'Install new carpet & pad',
+        phase: 'recon',
+        subsection: 'Flooring',
+        inputType: 'sf',
+        sortOrder: 210,
+      },
+    ],
+  },
+  {
+    id: 'recon_rough_in',
+    label: 'Rough-In',
+    phase: 'recon',
+    subsection: 'Rough-In',
+    items: [
+      {
+        id: 'recon_insulation',
+        label: 'Install new insulation',
+        phase: 'recon',
+        subsection: 'Rough-In',
+        inputType: 'sf',
+        sortOrder: 211,
+      },
+      {
+        id: 'recon_plumbing',
+        label: 'Plumbing rough-in / repair',
+        phase: 'recon',
+        subsection: 'Rough-In',
+        sortOrder: 212,
+      },
+      {
+        id: 'recon_electrical',
+        label: 'Electrical rough-in / repair',
+        phase: 'recon',
+        subsection: 'Rough-In',
+        sortOrder: 213,
+      },
+    ],
+  },
+  {
+    id: 'recon_closeout',
+    label: 'Closeout',
+    phase: 'recon',
+    subsection: 'Closeout',
+    items: [
+      {
+        id: 'recon_final_clean',
+        label: 'Final clean / detail',
+        phase: 'recon',
+        subsection: 'Closeout',
+        sortOrder: 214,
+      },
+      {
+        id: 'recon_final_walkthrough',
+        label: 'Final walk-through / punch list',
+        phase: 'recon',
+        subsection: 'Closeout',
+        sortOrder: 215,
+      },
+    ],
+  },
 ];
 
 export const ROOM_PRESETS: string[] = [
@@ -651,9 +929,24 @@ export const ROOM_PRESETS: string[] = [
   'Attic',
 ];
 
-export function makeRoomItems(waterCategory: 'cat2' | 'cat3'): RoomItem[] {
+export function makeRoomItems(
+  waterCategory: 'cat2' | 'cat3',
+  jobType: string = 'Water Mitigation',
+): RoomItem[] {
   const isCat3 = waterCategory === 'cat3';
-  const allItems: ScopeItem[] = SCOPE_TEMPLATE.flatMap((section) => section.items);
+
+  // Filter sections by job type
+  const phasesForJob: Record<string, string[]> = {
+    'Water Mitigation': ['1', '3', 'general'],
+    'Fire & Smoke': ['fire', 'general'],
+    'Reconstruction': ['recon', 'general'],
+    'General': ['general'],
+  };
+  const allowedPhases = phasesForJob[jobType] ?? ['1', '3', 'general'];
+
+  const allItems: ScopeItem[] = SCOPE_TEMPLATE
+    .filter((section) => allowedPhases.includes(section.phase))
+    .flatMap((section) => section.items);
 
   return allItems.map((item): RoomItem => {
     let label = item.label;

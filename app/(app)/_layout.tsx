@@ -61,6 +61,14 @@ export default function AppLayout() {
         name="project/estimator/[id]"
         options={{ title: 'Estimator View' }}
       />
+      <Stack.Screen
+        name="scope/debug"
+        options={{ title: 'Storage Debug' }}
+      />
+      <Stack.Screen
+        name="scope/whats-new"
+        options={{ title: "What's New" }}
+      />
     </Stack>
   );
 }

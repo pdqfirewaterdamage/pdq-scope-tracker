@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSheet } from '../../../../hooks/useSheet';
-import { getProject, createRoom, createItems, updateSheet, deleteRoom, Project } from '../../../../lib/storage';
+import { getProject, getSheets, createRoom, createItems, updateSheet, deleteRoom, createSheetWithCarryForward, Project, Sheet as SheetType } from '../../../../lib/storage';
 import { RoomSection } from '../../../../components/scope/RoomSection';
 import { ContentsSection } from '../../../../components/scope/ContentsSection';
 import { Button } from '../../../../components/ui/Button';
@@ -33,6 +33,7 @@ import {
   PDQ_GREEN,
   PDQ_AMBER,
   PDQ_GRAY,
+  PDQ_BLUE,
 } from '../../../../constants/colors';
 import { Item, Room } from '../../../../lib/storage';
 
@@ -47,6 +48,14 @@ export default function TechSheetScreen() {
   const [techNameError, setTechNameError] = useState(false);
   const [hoursType, setHoursType] = useState<'regular' | 'after'>('regular');
   const [submitting, setSubmitting] = useState(false);
+
+  // All sheets for date pills
+  const [allSheets, setAllSheets] = useState<SheetType[]>([]);
+
+  // Backdate modal state
+  const [addDayVisible, setAddDayVisible] = useState(false);
+  const [backdateInput, setBackdateInput] = useState('');
+  const [creatingDay, setCreatingDay] = useState(false);
 
   // Room picker state
   const [roomPickerVisible, setRoomPickerVisible] = useState(false);
@@ -130,6 +139,57 @@ export default function TechSheetScreen() {
       }
     }
   }, [sheet?.project_id, sheet?.tech_name, sheet?.hours_type, sheet?.additional_techs_answered]);
+
+  // Load all sheets for date pill tabs
+  useEffect(() => {
+    if (sheet?.project_id) {
+      getSheets(sheet.project_id)
+        .then((sheets) => {
+          // Sort by date ascending
+          const sorted = [...sheets].sort((a, b) => a.date.localeCompare(b.date));
+          setAllSheets(sorted);
+        })
+        .catch(() => null);
+    }
+  }, [sheet?.project_id]);
+
+  const todayISO = new Date().toISOString().slice(0, 10);
+
+  const formatPillDate = (dateStr: string): string => {
+    if (dateStr === todayISO) return 'Today';
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const handleAddDay = useCallback(async () => {
+    if (!sheet || !project) return;
+    const date = backdateInput.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      Alert.alert('Invalid Date', 'Please enter a date in YYYY-MM-DD format.');
+      return;
+    }
+    const existing = allSheets.find((s) => s.date === date);
+    if (existing) {
+      Alert.alert('Sheet exists', `A sheet for ${date} already exists.`);
+      return;
+    }
+    setCreatingDay(true);
+    try {
+      const newSheet = await createSheetWithCarryForward(
+        project.id,
+        date,
+        techName || null,
+        project.water_category,
+      );
+      setAddDayVisible(false);
+      setBackdateInput('');
+      router.replace('/(app)/project/tech/' + newSheet.id);
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create sheet');
+    } finally {
+      setCreatingDay(false);
+    }
+  }, [sheet, project, backdateInput, allSheets, techName, router]);
 
   const isCat3 = project?.water_category === 'cat3';
 
@@ -374,6 +434,41 @@ export default function TechSheetScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Date Pill Tabs */}
+      {allSheets.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.datePillRow}
+          contentContainerStyle={styles.datePillContent}
+        >
+          {allSheets.map((sh) => {
+            const isActive = sh.id === id;
+            return (
+              <TouchableOpacity
+                key={sh.id}
+                style={[styles.datePill, isActive ? styles.datePillActive : styles.datePillInactive]}
+                onPress={() => {
+                  if (!isActive) router.replace('/(app)/project/tech/' + sh.id);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.datePillText, isActive && styles.datePillTextActive]}>
+                  {formatPillDate(sh.date)}{sh.submitted ? ' \u2713' : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity
+            style={[styles.datePill, styles.datePillAdd]}
+            onPress={() => setAddDayVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.datePillAddText}>+ Add Day</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+
       {/* Weekend Banner */}
       {sheet.weekend_sheet && (
         <View style={styles.weekendBanner}>
@@ -756,6 +851,44 @@ export default function TechSheetScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Add Day (Backdate) Modal */}
+      <Modal
+        visible={addDayVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setAddDayVisible(false)}
+      >
+        <View style={styles.pickerContainer}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>Add Missed Day</Text>
+            <TouchableOpacity onPress={() => setAddDayVisible(false)}>
+              <Text style={styles.pickerClose}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: 16, gap: 12 }}>
+            <Text style={{ color: TEXT_SECONDARY, fontSize: 14, marginBottom: 4 }}>
+              Enter date (YYYY-MM-DD)
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={backdateInput}
+              onChangeText={setBackdateInput}
+              placeholder="2026-03-28"
+              placeholderTextColor={TEXT_DIM}
+              keyboardType="default"
+              autoFocus
+            />
+            <Button
+              label={creatingDay ? 'Creating...' : 'Create Sheet'}
+              variant="primary"
+              size="lg"
+              loading={creatingDay}
+              onPress={handleAddDay}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -764,6 +897,51 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BG_APP,
+  },
+  datePillRow: {
+    flexGrow: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER_COLOR,
+    backgroundColor: BG_CARD,
+  },
+  datePillContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  datePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  datePillActive: {
+    backgroundColor: PDQ_BLUE,
+  },
+  datePillInactive: {
+    backgroundColor: BG_INPUT,
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+  },
+  datePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT_SECONDARY,
+  },
+  datePillTextActive: {
+    color: '#fff',
+  },
+  datePillAdd: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: BORDER_COLOR,
+    borderStyle: 'dashed',
+  },
+  datePillAddText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT_MUTED,
   },
   centered: {
     flex: 1,
