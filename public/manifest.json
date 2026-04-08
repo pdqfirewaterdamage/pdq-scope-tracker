@@ -1,6 +1,6 @@
 {
-  "name": "PDQ Restoration",
-  "short_name": "PDQ",
+  "name": "PDQ Scope Tracker",
+  "short_name": "Scope Tracker",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "PDQ Restoration",
+    "name": "PDQ Scope Tracker",
     "slug": "pdq-scope-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,8 +13,8 @@
     },
     "web": {
       "favicon": "./public/apple-touch-icon.png",
-      "name": "PDQ Restoration",
-      "shortName": "PDQ",
+      "name": "PDQ Scope Tracker",
+      "shortName": "Scope Tracker",
       "themeColor": "#1a3a5c",
       "backgroundColor": "#0f172a"
     },
