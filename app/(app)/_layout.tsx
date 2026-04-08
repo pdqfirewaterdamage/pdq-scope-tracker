@@ -7,7 +7,7 @@ function HomeButton() {
   const router = useRouter();
   return (
     <TouchableOpacity
-      onPress={() => router.replace('/(app)')}
+      onPress={() => router.replace('/(app)/scope/login')}
       style={styles.homeBtn}
       activeOpacity={0.7}
     >
@@ -44,10 +44,6 @@ export default function AppLayout() {
       <Stack.Screen
         name="scope/index"
         options={{ title: 'Scope Tracker' }}
-      />
-      <Stack.Screen
-        name="psycorp"
-        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="project/[id]"

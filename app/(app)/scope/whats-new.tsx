@@ -18,6 +18,14 @@ interface Release {
 
 const CHANGELOG: Release[] = [
   {
+    version: 'v1.7',
+    date: 'April 8, 2026',
+    items: [
+      'Removed PDQ RestoreCalc from this app (now its own standalone project)',
+      'Removed hub/app selector screen — login goes straight to Scope Tracker',
+    ],
+  },
+  {
     version: 'v1.6',
     date: 'March 31, 2026',
     items: [
